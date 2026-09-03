@@ -18,8 +18,8 @@ MonoBehaviour:
   dashSpeed: 20
   dashDuration: 0.2
   dashCooldown: 0.6
-  maxHealth: 6
-  invincibilityDuration: 2
+  maxHealth: 9
+  invincibilityDuration: 0.5
   projectileSpeed: 10
   fireInterval: 0.25
   projectileSpawnOffset: 0.5

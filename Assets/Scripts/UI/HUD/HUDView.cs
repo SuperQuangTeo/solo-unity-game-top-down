@@ -88,9 +88,7 @@ public class HUDView : MonoBehaviour
 
         heartImages.Add(newHeart);
 
-        originalHeartScales.Add(
-            newHeart.rectTransform.localScale
-        );
+        originalHeartScales.Add(newHeart.rectTransform.localScale);
     }
 
     private void UpdateHeartSprite(Image heartImage, int healthForThisHeart)

@@ -4,7 +4,7 @@ public class HUDPresenter : MonoBehaviour
 {
     [Header("Gameplay")]
     [SerializeField] private PlayerHealth playerHealth;
-    [SerializeField] private TestCurrencySource testCurrencySource;
+    [SerializeField] private PlayerResources playerResources;
 
     [Header("View")]
     [SerializeField] private HUDView hudView;
@@ -13,13 +13,13 @@ public class HUDPresenter : MonoBehaviour
     private void OnEnable()
     {
         playerHealth.OnHealthChanged += HandleHealthChanged;
-        testCurrencySource.OnCurrencyChanged += HandleCurrencyChanged;
+        playerResources.OnCoinsChanged += HandleCurrencyChanged;
     }
 
     private void OnDisable()
     {
         playerHealth.OnHealthChanged -= HandleHealthChanged;
-        testCurrencySource.OnCurrencyChanged -= HandleCurrencyChanged;
+        playerResources.OnCoinsChanged -= HandleCurrencyChanged;
     }
 
     private void Start()
@@ -48,6 +48,6 @@ public class HUDPresenter : MonoBehaviour
 
     private void RefreshCurrency()
     {
-        hudView.UpdateCurrency(testCurrencySource.CurrentCurrency);
+        hudView.UpdateCurrency(playerResources.CurrentCoins);
     }
 }
