@@ -200,6 +200,11 @@ public class EnemyAI : MonoBehaviour
         }
     }
 
+    public void SetPlayerTransform(Transform newPlayerTransform)
+    {
+        playerTransform = newPlayerTransform;
+    }
+
     private void OnDrawGizmosSelected()
     {
         Gizmos.DrawWireSphere(transform.position, detectionRange);

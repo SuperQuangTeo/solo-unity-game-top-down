@@ -35,4 +35,9 @@ public class EnemyDeathCameraShake : MonoBehaviour
         }
         cameraController.ShakeCamera(deathShakeForce);
     }
+
+    public void SetCameraController(CameraController newCameraController)
+    {
+        cameraController = newCameraController;
+    }
 }

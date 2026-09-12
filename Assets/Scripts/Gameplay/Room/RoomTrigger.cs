@@ -5,6 +5,17 @@ public class RoomTrigger : MonoBehaviour
     [Header("Room Reference")]
     [SerializeField] private RoomController roomController;
 
+    private RoomContext roomContext;
+
+    private RoomTransitionController roomTransitionController;
+
+    private void Awake()
+    {
+        if (roomController != null)
+        {
+            roomContext = roomController.GetComponent<RoomContext>();
+        }
+    }
 
     private void OnTriggerEnter2D(Collider2D other)
     {
@@ -13,10 +24,20 @@ public class RoomTrigger : MonoBehaviour
             return;
         }
 
-        if (roomController == null)
+        if (roomTransitionController != null && roomContext != null)
         {
-            return;
+            roomTransitionController.EnterRoom(roomContext);
         }
-        roomController.StartCombat();
+
+        if (roomController != null)
+        {
+            roomController.StartCombat();
+        }
+    }
+
+
+    public void SetRoomTransitionController(RoomTransitionController newRoomTransitionController)
+    {
+        roomTransitionController = newRoomTransitionController;
     }
 }
