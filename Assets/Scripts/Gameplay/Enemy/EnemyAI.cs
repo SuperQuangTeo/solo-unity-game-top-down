@@ -61,6 +61,11 @@ public class EnemyAI : MonoBehaviour
         {
             enemyHealth.OnDeath -= HandleDeath;
         }
+        StopCurrentAttack();
+
+        ResetAttackVisual();
+
+        ResetRigidbody();
     }
 
     private void Update()
@@ -181,23 +186,68 @@ public class EnemyAI : MonoBehaviour
         );
     }
 
-    private void HandleDeath()
+    public void ResetForReuse()
     {
-        isDead = true;
-        isPlayerDetected = false;
-        isTouchingPlayer = false;
-        isAttacking = false;
+        isDead = false;
 
+        isPlayerDetected = false;
+
+        isTouchingPlayer = false;
+
+        StopCurrentAttack();
+
+        nextAttackTime = 0f;
+
+        ResetAttackVisual();
+
+        ResetRigidbody();
+    }
+
+    private void StopCurrentAttack()
+    {
         if (attackCoroutine != null)
         {
             StopCoroutine(attackCoroutine);
             attackCoroutine = null;
         }
-        if (visualTransform != null)
+
+        isAttacking = false;
+    }
+
+
+    private void ResetAttackVisual()
+    {
+        if (visualTransform == null)
         {
-            visualTransform.DOKill();
-            visualTransform.localScale = originalVisualScale;
+            return;
         }
+
+        visualTransform.DOKill();
+        visualTransform.localScale = originalVisualScale;
+    }
+
+
+    private void ResetRigidbody()
+    {
+        if (enemyRigidbody == null)
+        {
+            return;
+        }
+        enemyRigidbody.linearVelocity = Vector2.zero;
+        enemyRigidbody.angularVelocity = 0f;
+    }
+
+    private void HandleDeath(EnemyHealth deadEnemyHealth)
+    {
+        isDead = true;
+        isPlayerDetected = false;
+        isTouchingPlayer = false;
+
+        StopCurrentAttack();
+
+        ResetAttackVisual();
+
+        ResetRigidbody();
     }
 
     public void SetPlayerTransform(Transform newPlayerTransform)

@@ -16,6 +16,8 @@ public class EdgarDungeonPostProcessing : DungeonGeneratorPostProcessingComponen
     [Header("Runtime Gameplay References")]
     [SerializeField] private Transform playerTransform;
     [SerializeField] private CameraController cameraController;
+    [SerializeField] private EnemyPool enemyPool;
+    [SerializeField] private DropPool dropPool;
 
     public override void Run(DungeonGeneratorLevelGrid2D level)
     {
@@ -82,6 +84,10 @@ public class EdgarDungeonPostProcessing : DungeonGeneratorPostProcessingComponen
 
         roomController.SetRuntimeReferences(playerTransform, cameraController);
 
+        roomController.SetEnemyPool(enemyPool);
+
+        SetupRoomLootDropSpawner(roomTemplateInstance);
+
         Debug.Log(
             $"Room '{roomTemplateInstance.name}' " +
             $"có {roomInstance.Doors.Count} cửa đang được sử dụng.",
@@ -112,6 +118,8 @@ public class EdgarDungeonPostProcessing : DungeonGeneratorPostProcessingComponen
 
         CollectRoomSpawnPoints(roomTemplateInstance, roomContext);
 
+        SetupRoomItemReward(roomTemplateInstance);
+
         CreateGameplayDoors(roomInstance, roomTemplateInstance, roomController);
         Debug.Log(
             $"Room '{roomTemplateInstance.name}' " +
@@ -120,6 +128,34 @@ public class EdgarDungeonPostProcessing : DungeonGeneratorPostProcessingComponen
             roomTemplateInstance
         );
         return true;
+    }
+
+    private void SetupRoomItemReward(GameObject roomTemplateInstance)
+    {
+        RoomItemRewardSpawner roomItemRewardSpawner = roomTemplateInstance.GetComponent<RoomItemRewardSpawner>();
+
+        if (roomItemRewardSpawner == null)
+        {
+            return;
+        }
+        roomItemRewardSpawner.InitializeRoomItemReward();
+    }
+
+    private void SetupRoomLootDropSpawner(GameObject roomTemplateInstance)
+    {
+        RoomLootDropSpawner roomLootDropSpawner = roomTemplateInstance.GetComponent<RoomLootDropSpawner>();
+
+        if (roomLootDropSpawner == null)
+        {
+            return;
+        }
+
+        if (dropPool == null)
+        {
+            return;
+        }
+
+        roomLootDropSpawner.SetDropPool(dropPool);
     }
 
     private void SetupInitialRoom(List<RoomContext> generatedRoomContexts)
@@ -269,19 +305,11 @@ public class EdgarDungeonPostProcessing : DungeonGeneratorPostProcessingComponen
         // Tìm tất cả EnemySpawnPoint nằm bên trong chính Room runtime này.
         EnemySpawnPoint[] enemySpawnPoints = roomTemplateInstance.GetComponentsInChildren<EnemySpawnPoint>(true);
 
-        // Tìm RewardSpawnPoint đang active của Room.
-        RewardSpawnPoint rewardSpawnPoint = roomTemplateInstance.GetComponentInChildren<RewardSpawnPoint>();
-
         PlayerSpawnPoint playerSpawnPoint = roomTemplateInstance.GetComponentInChildren<PlayerSpawnPoint>(true);
 
         // Gửi các Enemy Spawn Point cho RoomContext lưu lại.
         roomContext.SetEnemySpawnPoints(
             enemySpawnPoints
-        );
-
-        // Gửi Reward Spawn Point cho RoomContext lưu lại.
-        roomContext.SetRewardSpawnPoint(
-            rewardSpawnPoint
         );
 
         // Gửi PlayerSpawnPoint cho RoomContext lưu lại.
@@ -292,8 +320,6 @@ public class EdgarDungeonPostProcessing : DungeonGeneratorPostProcessingComponen
         Debug.Log(
     $"Room '{roomTemplateInstance.name}' " +
     $"có {enemySpawnPoints.Length} Enemy Spawn Point. " +
-    $"Reward Spawn Point = " +
-    $"{(rewardSpawnPoint != null ? "Có" : "Không")}. " +
     $"Player Spawn Point = " +
     $"{(playerSpawnPoint != null ? "Có" : "Không")}.",
     roomTemplateInstance

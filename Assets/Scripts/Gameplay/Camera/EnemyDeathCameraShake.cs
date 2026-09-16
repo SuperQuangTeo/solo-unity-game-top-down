@@ -27,7 +27,7 @@ public class EnemyDeathCameraShake : MonoBehaviour
         enemyHealth.OnDeath -= HandleEnemyDeath;
     }
 
-    private void HandleEnemyDeath()
+    private void HandleEnemyDeath(EnemyHealth deadEnemyHealth)
     {
         if (cameraController == null)
         {

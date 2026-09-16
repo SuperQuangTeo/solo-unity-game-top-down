@@ -27,13 +27,6 @@ public class PlayerResources : MonoBehaviour
         currentBombs = 0;
     }
 
-    [ContextMenu("Add Test Coin")]
-    public void AddCoin()
-    {
-        currentCoins ++;
-        OnCoinsChanged?.Invoke(currentCoins);
-    }
-
     public void AddCoins(int amount)
     {
         if (amount <= 0)

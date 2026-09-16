@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -11,8 +12,6 @@ public class RoomController : MonoBehaviour
     [Header("Enemy References")]
     [SerializeField] private Transform enemyContainer;
 
-    [SerializeField] private EnemyHealth enemyPrefab;
-
     [Header("Enemy State")]
     [SerializeField] private int aliveEnemyCount;
 
@@ -24,6 +23,8 @@ public class RoomController : MonoBehaviour
     private CameraController cameraController;
 
 
+    private EnemyPool enemyPool;
+
     private EnemyHealth[] roomEnemies;
 
     private RoomContext roomContext;
@@ -31,6 +32,8 @@ public class RoomController : MonoBehaviour
     public event Action OnRoomCleared;
 
     private bool hasSpawnedRuntimeEnemies;
+
+    private bool usesEnemyPoolForRuntimeEnemies;
 
     public bool IsRoomActive => isRoomActive;
     public bool IsRoomCleared => isRoomCleared;
@@ -67,10 +70,15 @@ public class RoomController : MonoBehaviour
         roomEnemies = enemyContainer.GetComponentsInChildren<EnemyHealth>(true);
     }
 
-    public void SetRuntimeReferences( Transform newPlayerTransform, CameraController newCameraController)
+    public void SetRuntimeReferences(Transform newPlayerTransform, CameraController newCameraController)
     {
         playerTransform = newPlayerTransform;
         cameraController = newCameraController;
+    }
+
+    public void SetEnemyPool(EnemyPool newEnemyPool)
+    {
+        enemyPool = newEnemyPool;
     }
 
     private void SubscribeToEnemyEvents()
@@ -97,11 +105,45 @@ public class RoomController : MonoBehaviour
         }
     }
 
-    private void HandleEnemyDeath()
+    private void HandleEnemyDeath(EnemyHealth deadEnemyHealth)
     {
+        if (deadEnemyHealth == null)
+        {
+            return;
+        }
+
+        deadEnemyHealth.OnDeath -= HandleEnemyDeath;
+
         aliveEnemyCount--;
+
         aliveEnemyCount = Mathf.Max(aliveEnemyCount, 0);
+
         CheckRoomCleared();
+
+        if (usesEnemyPoolForRuntimeEnemies && enemyPool != null)
+        {
+            StartCoroutine(
+        ReleaseEnemyNextFrame(deadEnemyHealth)
+    );
+        }
+    }
+
+    private IEnumerator ReleaseEnemyNextFrame(
+    EnemyHealth deadEnemyHealth)
+    {
+        yield return null;
+
+        if (deadEnemyHealth == null)
+        {
+            yield break;
+        }
+
+        if (enemyPool == null)
+        {
+            yield break;
+        }
+
+        enemyPool.ReleaseEnemy(deadEnemyHealth);
     }
 
     public void StartCombat()
@@ -229,12 +271,13 @@ public class RoomController : MonoBehaviour
             return;
         }
 
-        if (enemyPrefab == null)
+        if (enemyPool == null)
         {
             Debug.LogError(
-                $"Room '{gameObject.name}' is not attached Enemy Prefab.",
+                $"Room '{gameObject.name}' has no EnemyPool runtime reference.",
                 this
             );
+
             return;
         }
 
@@ -256,11 +299,9 @@ public class RoomController : MonoBehaviour
                 continue;
             }
 
-            EnemyHealth spawnedEnemy = Instantiate(enemyPrefab, enemySpawnPoint.transform.position, Quaternion.identity, enemyContainer);
+            EnemyHealth spawnedEnemy = enemyPool.GetEnemy(enemySpawnPoint.transform.position, enemyContainer);
 
             ConfigureSpawnedEnemy(spawnedEnemy);
-
-            spawnedEnemy.gameObject.SetActive(false);
 
             spawnedEnemies.Add(spawnedEnemy);
         }
@@ -273,6 +314,7 @@ public class RoomController : MonoBehaviour
         SubscribeToEnemyEvents();
 
         hasSpawnedRuntimeEnemies = true;
+        usesEnemyPoolForRuntimeEnemies = true;
     }
 
     private void ConfigureSpawnedEnemy(EnemyHealth spawnedEnemy)
@@ -296,37 +338,4 @@ public class RoomController : MonoBehaviour
             enemyDeathCameraShake.SetCameraController(cameraController);
         }
     }
-
-#if UNITY_EDITOR
-
-    [ContextMenu("Test Start Combat")]
-    private void TestStartCombat()
-    {
-        StartCombat();
-    }
-
-    [ContextMenu("Test Defeat All Room Enemies")]
-    private void TestDefeatAllRoomEnemies()
-    {
-        if (roomEnemies == null || roomEnemies.Length == 0)
-        {
-
-            return;
-        }
-
-        foreach (EnemyHealth enemyHealth in roomEnemies)
-        {
-            if (enemyHealth == null)
-            {
-                continue;
-            }
-
-            enemyHealth.TakeDamage(
-                int.MaxValue
-            );
-        }
-    }
-
-
-#endif
 }

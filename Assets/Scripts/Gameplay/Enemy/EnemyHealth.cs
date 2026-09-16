@@ -11,17 +11,17 @@ public class EnemyHealth : MonoBehaviour
 
     private bool isDead;
 
-    public event Action OnDeath;
+    public event Action<EnemyHealth> OnDeath;
     public event Action OnDamaged;
 
     public int CurrentHealth => currentHealth;
 
     private void Awake()
     {
-        InitializeHealth();
+        ResetForReuse();
     }
 
-    private void InitializeHealth()
+    public void ResetForReuse()    
     {
         if (enemyData == null)
         {
@@ -53,6 +53,6 @@ public class EnemyHealth : MonoBehaviour
     {
         if (isDead) return;
         isDead = true;
-        OnDeath?.Invoke();
+        OnDeath?.Invoke(this);
     }
 }

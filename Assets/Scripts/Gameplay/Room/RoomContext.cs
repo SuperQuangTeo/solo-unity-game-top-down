@@ -10,8 +10,10 @@ public class RoomContext : MonoBehaviour
 
     [Header("Runtime Spawn Points")]
     [SerializeField] private EnemySpawnPoint[] enemySpawnPoints;
-    [SerializeField] private RewardSpawnPoint rewardSpawnPoint;
     [SerializeField] private PlayerSpawnPoint playerSpawnPoint;
+
+    [Header("Item Reward")]
+    [SerializeField] private ItemPoolData itemPoolData;
 
     [Header("Room State")]
     [SerializeField] private bool isVisited;
@@ -25,8 +27,8 @@ public class RoomContext : MonoBehaviour
     public int RoomId => roomId;
     public RoomType RoomType => roomType;
     public EnemySpawnPoint[] EnemySpawnPoints => enemySpawnPoints;
-    public RewardSpawnPoint RewardSpawnPoint => rewardSpawnPoint;
     public PlayerSpawnPoint PlayerSpawnPoint => playerSpawnPoint;
+    public ItemPoolData ItemPoolData => itemPoolData;
     public bool IsVisited => isVisited;
     public RoomContext[] ConnectedRooms => connectedRooms;
     public Vector2Int LayoutPosition => layoutPosition;
@@ -40,11 +42,6 @@ public class RoomContext : MonoBehaviour
     public void SetEnemySpawnPoints(EnemySpawnPoint[] newEnemySpawnPoints)
     {
         enemySpawnPoints = newEnemySpawnPoints;
-    }
-
-    public void SetRewardSpawnPoint(RewardSpawnPoint newRewardSpawnPoint)
-    {
-        rewardSpawnPoint = newRewardSpawnPoint;
     }
 
     public void SetLayoutPosition(Vector2Int newLayoutPosition)

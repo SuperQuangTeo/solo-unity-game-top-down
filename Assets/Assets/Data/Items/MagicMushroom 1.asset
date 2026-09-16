@@ -1,0 +1,17 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5c50da330100e414d95f90fcdbcd09ce, type: 3}
+  m_Name: MagicMushroom 1
+  m_EditorClassIdentifier: Assembly-CSharp::ItemData
+  itemId: magic_mushroom_1
+  displayName: magic_mushroom_1
+  icon: {fileID: 21300048, guid: 512a3a5212bdfc048b89d9ef214b8cee, type: 3}
