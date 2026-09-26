@@ -18,6 +18,7 @@ public class EdgarDungeonPostProcessing : DungeonGeneratorPostProcessingComponen
     [SerializeField] private CameraController cameraController;
     [SerializeField] private EnemyPool enemyPool;
     [SerializeField] private DropPool dropPool;
+    [SerializeField] private ProjectilePool enemyProjectilePool;
 
     public override void Run(DungeonGeneratorLevelGrid2D level)
     {
@@ -85,6 +86,8 @@ public class EdgarDungeonPostProcessing : DungeonGeneratorPostProcessingComponen
         roomController.SetRuntimeReferences(playerTransform, cameraController);
 
         roomController.SetEnemyPool(enemyPool);
+
+        roomController.SetEnemyProjectilePool(enemyProjectilePool);
 
         SetupRoomLootDropSpawner(roomTemplateInstance);
 

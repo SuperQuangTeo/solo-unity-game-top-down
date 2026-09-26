@@ -15,9 +15,9 @@ GameObject:
   - component: {fileID: 3457457781618446490}
   - component: {fileID: 8453104618825894847}
   - component: {fileID: 3712936307074198220}
-  - component: {fileID: -1830340658742661186}
+  - component: {fileID: 6803170317815507139}
   m_Layer: 8
-  m_Name: EnemyDummy
+  m_Name: EnemyRanged
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -37,6 +37,7 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 5923642178162268461}
+  - {fileID: 1220886417196329220}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!61 &328070499699915582
@@ -168,11 +169,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2aee4ce12530dc945b334cf23163d0ce, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::EnemyAI
-  enemyData: {fileID: 11400000, guid: 1ceca5de94b78884f9c53e989d28f1a0, type: 2}
+  enemyData: {fileID: 11400000, guid: 00278eb29c157354d8276286220be58d, type: 2}
   playerTransform: {fileID: 0}
   detectionRange: 5
-  attackBehaviour: {fileID: -1830340658742661186}
---- !u!114 &-1830340658742661186
+  attackBehaviour: {fileID: 6803170317815507139}
+--- !u!114 &6803170317815507139
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -181,13 +182,19 @@ MonoBehaviour:
   m_GameObject: {fileID: 2955913484019291864}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 72287fbc04c202647b39eb2ab06d354d, type: 3}
+  m_Script: {fileID: 11500000, guid: 9acb6aaf42663c940b630f100edf6669, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::MeleeEnemyAttack
-  enemyData: {fileID: 11400000, guid: 1ceca5de94b78884f9c53e989d28f1a0, type: 2}
+  m_EditorClassIdentifier: Assembly-CSharp::RangedEnemyAttack
+  enemyData: {fileID: 11400000, guid: 00278eb29c157354d8276286220be58d, type: 2}
+  attackRange: 3
+  projectilePool: {fileID: 0}
+  firePoint: {fileID: 1220886417196329220}
+  projectileSpeed: 8
+  projectileLifetime: 3
+  projectileSpawnOffset: 0.5
   visualTransform: {fileID: 5923642178162268461}
-  attackTelegraphDuration: 0.3
-  attackPunchScale: {x: 0.3, y: 0.3, z: 0}
+  attackTelegraphDuration: 0.25
+  attackPunchScale: {x: 0.15, y: 0.15, z: 0}
 --- !u!1 &3900558825019190749
 GameObject:
   m_ObjectHideFlags: 0
@@ -270,7 +277,7 @@ SpriteRenderer:
   m_SortingOrder: 0
   m_MaskInteraction: 0
   m_Sprite: {fileID: 7482667652216324306, guid: 311925a002f4447b3a28927169b83ea6, type: 3}
-  m_Color: {r: 0.12482201, g: 0.58114505, b: 0.8018868, a: 1}
+  m_Color: {r: 0.8, g: 0.7090008, b: 0.12549019, a: 1}
   m_FlipX: 0
   m_FlipY: 0
   m_DrawMode: 0
@@ -280,3 +287,34 @@ SpriteRenderer:
   m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
   m_BlendShapeWeights: []
+--- !u!1 &8123607390626522924
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1220886417196329220}
+  m_Layer: 8
+  m_Name: FirePoint
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1220886417196329220
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8123607390626522924}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1307967193351207247}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}

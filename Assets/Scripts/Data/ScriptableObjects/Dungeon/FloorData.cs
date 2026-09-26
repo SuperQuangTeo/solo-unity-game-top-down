@@ -4,7 +4,6 @@ using UnityEngine;
 public class FloorData : ScriptableObject
 {
     [Header("Floor Settings")]
-    [SerializeField, Min(1)] private int roomCount = 6;
     [SerializeField, Min(1)] private int difficultyLevel = 1;
 
 
@@ -21,7 +20,6 @@ public class FloorData : ScriptableObject
     [SerializeField] private bool useRandomSeed = true;
     [SerializeField] private int fixedSeed = 12345;
 
-    public int RoomCount => roomCount;
     public int DifficultyLevel => difficultyLevel;
     public RoomType[] RoomTypes => roomTypes;
     public bool UseRandomSeed => useRandomSeed;

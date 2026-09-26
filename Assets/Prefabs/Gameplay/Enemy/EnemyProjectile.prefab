@@ -104,9 +104,9 @@ GameObject:
   - component: {fileID: 1189914445282892490}
   - component: {fileID: 1984663515941485774}
   - component: {fileID: 4561095506452206694}
-  - component: {fileID: 1913417981812189000}
+  - component: {fileID: -2541912041410841132}
   m_Layer: 6
-  m_Name: Projectile
+  m_Name: EnemyProjectile
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -204,7 +204,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Projectile
   projectileRigidbody: {fileID: 1189914445282892490}
---- !u!114 &1913417981812189000
+--- !u!114 &-2541912041410841132
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -213,11 +213,11 @@ MonoBehaviour:
   m_GameObject: {fileID: 8674173811494635022}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 21500483119a33543a6c6107d5a968fe, type: 3}
+  m_Script: {fileID: 11500000, guid: 89160cd2680be4a48987041c04dfeac1, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::ProjectileCollision
+  m_EditorClassIdentifier: Assembly-CSharp::EnemyProjectileCollision
   projectile: {fileID: 4561095506452206694}
   collisionLayers:
     serializedVersion: 2
-    m_Bits: 384
+    m_Bits: 640
   damageAmount: 1

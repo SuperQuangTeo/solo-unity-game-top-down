@@ -29,8 +29,10 @@ Tuần 5 - Thứ 3      DONE
 Tuần 5 - Thứ 4      DONE
 Tuần 5 - Thứ 5      DONE
 Tuần 5 - Thứ 6      DONE
+Tuần 6 - Thứ 2      DONE  — Enemy Architecture
+Tuần 6 - Thứ 3      DONE  — Enemy Ranged
 
-Tổng: 25 / 50 task DONE
+Tổng: 27 / 50 task DONE
 ```
 
 Chi tiết từng task, bug và checklist test được giữ bên dưới từ handoff cũ.
@@ -2582,6 +2584,141 @@ Quy tắc:
 - [x] DOTween pickup visual và NextFloor hoàn chỉnh được ghi rõ là deferred, không giả định đã làm.
 - [x] Console sạch trong regression cuối Tuần 5 - Thứ 6.
 
+
+## Tuần 6 — Thứ 2: Enemy Architecture — DONE
+
+**Người dùng đã Play Test và xác nhận toàn bộ regression sau refactor.**
+
+### Flow architecture sau refactor
+
+```text
+EnemyAI
+├── Detection
+├── State Machine
+│   ├── Idle
+│   ├── Chase
+│   └── Attack
+└── gọi Attack Behaviour
+            ↓
+EnemyAttackBehaviour (abstract MonoBehaviour)
+├── MeleeEnemyAttack
+└── RangedEnemyAttack
+```
+
+### Thay đổi chính
+- `EnemyAI` giữ detection, State Machine, Chase, death/reset pooling và runtime Player reference.
+- Logic Attack cụ thể được tách khỏi `EnemyAI`.
+- Tạo `EnemyAttackBehaviour` dạng `abstract MonoBehaviour` với contract:
+  - `CanAttack(Transform playerTransform)`
+  - `UpdateAttack(Transform playerTransform)`
+  - `ResetAttack()`
+- Tạo `MeleeEnemyAttack` và chuyển contact detection, cooldown, telegraph, damage, coroutine và visual reset sang component này.
+- `EnemyAI` hỏi `attackBehaviour.CanAttack()` để quyết định Attack State và gọi `attackBehaviour.UpdateAttack()` khi đang Attack.
+- `EnemyAI` gọi `ResetAttack()` khi Enemy chết/disable/reuse.
+- `EnemyData` tiếp tục giữ stat; không đưa state/visual vào data.
+- Chưa tạo `IEnemyMovement` / `IEnemyAttack`; abstract component đủ cho nhu cầu Unity Inspector hiện tại.
+- Chưa cài A* vì chưa có bằng chứng direct chase thường xuyên kẹt trong dungeon.
+
+### Regression đã test
+```text
+✓ Idle / Chase / Attack chuyển đúng.
+✓ Melee contact attack vẫn hoạt động.
+✓ Telegraph vẫn chỉ tác động child Visual.
+✓ Player rời contact trong telegraph không nhận damage.
+✓ Cooldown hoạt động.
+✓ Enemy chết giữa telegraph không gây damage sau death.
+✓ Enemy Pool reuse không giữ Attack state/cooldown/coroutine/tween cũ.
+✓ EnemyHealth / RoomController / Door / Clear không regression.
+✓ Console sạch.
+```
+
+---
+
+## Tuần 6 — Thứ 3: Enemy Ranged — DONE
+
+**Người dùng đã Play Test và xác nhận toàn bộ flow Ranged + pooling regression.**
+
+### Flow
+
+```text
+EnemyAI
+    ↓
+RangedEnemyAttack.CanAttack()
+    ↓
+Player đã Detect + nằm trong Attack Range
+    ↓
+Attack State
+    ↓
+Telegraph trên Visual
+    ↓
+FirePoint + hướng Enemy → Player
+    ↓
+EnemyProjectilePool.GetProjectile()
+    ↓
+Projectile.Initialize()
+    ↓
+Player / Environment collision
+    ↓
+ReturnToPool
+```
+
+### Thay đổi chính
+- Tạo `RangedEnemyAttack` kế thừa `EnemyAttackBehaviour`.
+- Ranged dùng `attackRange` riêng với `EnemyAI.detectionRange`.
+- Telegraph dùng DOTween trên child `Visual`; không tween Rigidbody2D root.
+- Có `FirePoint` và `projectileSpawnOffset` để đặt projectile ngoài thân Enemy.
+- Projectile lấy từ `ProjectilePool` và dùng lại object.
+- `ProjectilePool` là Scene runtime reference, được cấp cho Ranged Enemy bằng setter/runtime injection thay vì kéo cứng Scene object vào prefab.
+- Ranged projectile dùng `EnemyData.AttackDamage` làm nguồn damage và đã test thay đổi damage theo asset.
+- `ResetAttack()` dọn coroutine/cooldown/tween để tương thích Enemy Pool.
+
+### Regression đã test
+```text
+✓ Player ngoài Detection → Idle.
+✓ Player trong Detection nhưng ngoài Attack Range → Chase.
+✓ Player trong Attack Range → Attack.
+✓ Telegraph xuất hiện trước khi bắn.
+✓ Projectile bay đúng hướng tới Player.
+✓ Projectile trúng Player → damage + ReturnToPool.
+✓ Projectile trúng Environment → ReturnToPool.
+✓ Cooldown hoạt động.
+✓ Enemy chết giữa telegraph → không bắn projectile sau death.
+✓ Enemy Pool reuse → Enemy Ranged Attack lại bình thường.
+✓ Projectile Pool reuse → không giữ state cũ.
+✓ EnemyData.AttackDamage thay đổi → Ranged damage thay đổi tương ứng.
+✓ Console sạch.
+```
+
+### Ghi chú kiến trúc
+`Enemy Ranged` là implementation thứ hai chứng minh việc tách Attack thành component là có nhu cầu thực tế. Tuy nhiên project **chưa thêm `IEnemyAttack` interface riêng**; `abstract EnemyAttackBehaviour : MonoBehaviour` đang vừa làm contract vừa giữ khả năng kéo component trong Unity Inspector.
+
+---
+
+## Trạng thái sau Tuần 6 — Thứ 3
+
+```text
+27 / 50 task DONE
+
+Task hiện tại:
+Tuần 6 - Thứ 4 — Damage System
+
+DamageInfo / DamageCalculator
+→ chưa triển khai
+→ bước đầu tiên là review damage flow hiện tại trước khi sửa code.
+```
+
+## Enemy Architecture + Ranged
+- [x] Enemy State Machine tối thiểu Idle / Chase / Attack.
+- [x] `EnemyAttackBehaviour` abstract component.
+- [x] `MeleeEnemyAttack` tách khỏi `EnemyAI`.
+- [x] `RangedEnemyAttack` dùng chung Attack Behaviour.
+- [x] Ranged telegraph trên Visual.
+- [x] Ranged projectile dùng Projectile Pool.
+- [x] Runtime injection cho Scene Projectile Pool.
+- [x] Enemy/Projectile pooling regression.
+- [x] Ranged damage lấy theo `EnemyData.AttackDamage`.
+- [x] Console sạch sau test cuối.
+
 ## Debug / Regression
 - [x] Stop Play Mode không còn MissingReferenceException tại ProjectilePool.OnDestroyProjectile.
 - [x] Không có lỗi đỏ Console sau test Combat Foundation + Player Health.
@@ -2589,3 +2726,37 @@ Quy tắc:
 - [x] Enemy chết không còn Chase/Attack; attack đang telegraph được cancel an toàn.
 
 ---
+## 2026-09-25 — Edgar Multiple LevelGraph Variants — DONE
+
+Người dùng đã Play Test và xác nhận flow random LevelGraph hoạt động đúng.
+
+### Thay đổi
+- `FloorEdgarConfig` đổi từ một `LevelGraph` sang `List<LevelGraph>`.
+- `FloorEdgarConfig` bỏ validation `FloorData.RoomCount` với Edgar Graph.
+- Mỗi `LevelGraph` có thể có số room khác nhau; số room layout lấy từ `LevelGraph.Rooms.Count`.
+- `EdgarDungeonGenerator` random chọn một graph trước `DungeonGeneratorGrid2D.Generate()`.
+- Room Template tiếp tục được cấu hình thủ công trên từng graph node trong Edgar Graph Editor.
+- Không sửa source Edgar và không thêm Manager/framework mới.
+
+### Runtime flow
+```text
+FloorEdgarConfig.List<LevelGraph>
+        ↓
+Random chọn 1 LevelGraph
+        ↓
+FixedLevelGraphConfig.LevelGraph
+        ↓
+DungeonGeneratorGrid2D.Generate()
+```
+
+### Test
+```text
+✓ Nhiều LevelGraph cấu hình được trong FloorEdgarConfig.
+✓ Random graph trước Generate hoạt động.
+✓ Các graph không cần cùng số room.
+✓ Console sạch trong test cuối.
+```
+
+### Ghi chú
+Đây là điều chỉnh kiến trúc bổ sung cho Edgar Free, không phải task roadmap mới. Task hiện tại của roadmap vẫn là **Tuần 6 - Thứ 4 — Damage System**.
+

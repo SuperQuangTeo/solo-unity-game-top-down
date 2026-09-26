@@ -1,4 +1,5 @@
 using Edgar.Unity;
+using System.Collections.Generic;
 using UnityEngine;
 
 [CreateAssetMenu(fileName = "NewFloorEdgarConfig",menuName = "Dungeon/Floor Edgar Config")]
@@ -8,37 +9,38 @@ public class FloorEdgarConfig : ScriptableObject
     [SerializeField] private FloorData floorData;
 
     [Header("Edgar Configuration")]
-    [SerializeField] private LevelGraph levelGraph;
+    [SerializeField] private List<LevelGraph> levelGraphs;
 
     public FloorData FloorData => floorData;
 
-    public LevelGraph LevelGraph => levelGraph;
+    public List<LevelGraph> LevelGraphs => levelGraphs;
     private void OnValidate()
     {
-        if (floorData == null || levelGraph == null)
+        if (floorData == null || levelGraphs == null || levelGraphs.Count == 0)
         {
             return;
         }
 
-        ValidateRoomCount();
+        ValidateLevelGraphs();
         ValidateRequiredRoomTypes();
     }
 
-
-    private void ValidateRoomCount()
+    private void ValidateLevelGraphs()
     {
-        int graphRoomCount = levelGraph.Rooms.Count;
-
-        if (floorData.RoomCount == graphRoomCount)
+        for (int i = 0; i < levelGraphs.Count; i++)
         {
-            return;
+            LevelGraph levelGraph = levelGraphs[i];
+
+            if (levelGraph == null)
+            {
+                Debug.LogWarning(
+                    $"Floor '{floorData.name}' has an empty Level Graph at index {i}.",
+                    this
+                );
+            }
         }
-        Debug.LogWarning(
-            $"Floor '{floorData.name}' required {floorData.RoomCount} room, " +
-            $"but Level Graph '{levelGraph.name}' Actually {graphRoomCount} room.",
-            this
-        );
     }
+
 
     private void ValidateRequiredRoomTypes()
     {

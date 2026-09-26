@@ -3,7 +3,7 @@
 > **Dashboard bàn giao giữa các phiên chat.**
 > File này chỉ giữ trạng thái hiện tại + việc tiếp theo. Chi tiết kiến trúc xem `PROJECT_ARCHITECTURE.md`; lịch sử từng bước/test/bug xem `PROJECT_HISTORY.md`.
 >
-> **Cập nhật gần nhất: 2026-09-16.**
+> **Cập nhật gần nhất: 2026-09-25.**
 
 ---
 
@@ -55,9 +55,132 @@ Tuần 5 - Thứ 3      DONE  — Room Transition + Cinemachine
 Tuần 5 - Thứ 4      DONE  — Object Pooling
 Tuần 5 - Thứ 5      DONE  — Loot Data
 Tuần 5 - Thứ 6      DONE  — Loot & Floor Flow (scope đã chốt)
+Tuần 6 - Thứ 2      DONE  — Enemy Architecture
+Tuần 6 - Thứ 3      DONE  — Enemy Ranged
 
-COMPLETED: 25 / 50 task
+COMPLETED: 27 / 50 task
+CURRENT: Tuần 6 - Thứ 4 — Damage System
+STATUS: Đang làm
 ```
+
+## Tuần 6 - Thứ 2 — Enemy Architecture — DONE
+
+Đã Play Test regression sau refactor.
+
+```text
+EnemyAI
+├── Idle
+├── Chase
+└── Attack
+        ↓
+EnemyAttackBehaviour
+├── MeleeEnemyAttack
+└── RangedEnemyAttack
+```
+
+Đã chốt:
+- `EnemyData` tiếp tục giữ stat/config của Enemy.
+- `EnemyAI` giữ detection, state và Chase; không ôm chi tiết Attack cụ thể.
+- Attack được tách thành `EnemyAttackBehaviour` dạng `abstract MonoBehaviour` để Unity Inspector có thể tham chiếu component cụ thể.
+- `MeleeEnemyAttack` giữ contact detection, cooldown, telegraph và melee damage.
+- `EnemyAI` gọi `CanAttack()` để quyết định vào Attack State và gọi `UpdateAttack()` khi đang Attack.
+- `ResetAttack()` được gọi khi Enemy chết/disable/reuse để giữ pooling contract.
+- Chưa tạo `IEnemyMovement` / `IEnemyAttack`; interface chỉ được cân nhắc khi có nhu cầu chung lớn hơn thực tế hiện tại.
+- Chưa cài A* vì chưa có bằng chứng direct chase thường xuyên kẹt trong dungeon.
+
+## Edgar — Multiple LevelGraph Variants — DONE (bổ sung kiến trúc)
+
+**Người dùng đã Play Test và xác nhận flow random LevelGraph hoạt động đúng.**
+
+Phạm vi bổ sung này không tạo task roadmap mới; đây là điều chỉnh kiến trúc cho Edgar Free hiện tại.
+
+### Cấu hình hiện tại
+```text
+FloorEdgarConfig
+├── FloorData
+└── List<LevelGraph>
+    ├── LevelGraph A
+    ├── LevelGraph B
+    └── LevelGraph C
+```
+
+- `FloorEdgarConfig` dùng `List<LevelGraph>` thay cho một `LevelGraph` duy nhất.
+- Mỗi `LevelGraph` có thể có số room khác nhau.
+- `FloorData.RoomCount` không còn được `FloorEdgarConfig` dùng để validate số room của Edgar Graph.
+- Số room thực tế của dungeon layout lấy trực tiếp từ `LevelGraph.Rooms.Count`.
+- `EdgarDungeonGenerator` random chọn một `LevelGraph` trước khi gọi `DungeonGeneratorGrid2D.Generate()`.
+- Room Template vẫn được cấu hình thủ công trên từng node của từng LevelGraph trong Edgar Graph Editor.
+- Không sửa source Edgar và không thêm Manager/framework mới.
+
+### Runtime flow
+```text
+FloorEdgarConfig.List<LevelGraph>
+        ↓
+EdgarDungeonGenerator
+        ↓
+Random chọn 1 LevelGraph
+        ↓
+FixedLevelGraphConfig.LevelGraph
+        ↓
+DungeonGeneratorGrid2D.Generate()
+```
+
+### Test đã xác nhận
+```text
+✓ Nhiều LevelGraph được cấu hình trong FloorEdgarConfig.
+✓ Random chọn Graph trước Generate.
+✓ Các Graph không cần cùng số room.
+✓ Console không có lỗi trong test cuối.
+```
+
+## Tuần 6 - Thứ 3 — Enemy Ranged — DONE
+
+Đã Play Test toàn bộ flow Ranged và regression pooling.
+
+```text
+EnemyAI
+    ↓
+RangedEnemyAttack.CanAttack()
+    ↓
+Player trong Attack Range
+    ↓
+Attack State
+    ↓
+Telegraph trên Visual
+    ↓
+EnemyProjectilePool.GetProjectile()
+    ↓
+Projectile.Initialize()
+    ↓
+Player / Environment collision
+    ↓
+ReturnToPool
+```
+
+Đã hoàn thành:
+- Tạo `RangedEnemyAttack` dùng chung `EnemyAttackBehaviour` với Melee.
+- Có `attackRange` riêng, tách khỏi `detectionRange`.
+- Telegraph bằng DOTween trên child `Visual`; không tween Rigidbody2D root.
+- Có `FirePoint` và tính hướng bắn từ Enemy tới Player.
+- Projectile được lấy từ `ProjectilePool`, không Instantiate/Destroy mỗi lần bắn.
+- `ProjectilePool` được cấp cho Ranged Enemy bằng runtime injection; không kéo Scene reference cứng vào prefab.
+- `EnemyData.AttackDamage` được dùng làm nguồn damage cho Ranged projectile và đã test thay đổi damage theo data.
+- Enemy death giữa telegraph không bắn projectile muộn.
+- Enemy Pool reuse reset được Attack state/cooldown/coroutine/tween.
+- Projectile Pool reuse hoạt động đúng.
+
+Regression đã xác nhận:
+- Idle → Chase → Attack đúng theo Detection/Attack Range.
+- Telegraph → bắn projectile đúng hướng.
+- Projectile trúng Player gây damage đúng và ReturnToPool.
+- Projectile trúng Environment ReturnToPool.
+- Cooldown hoạt động.
+- Enemy chết giữa telegraph không gây damage/bắn projectile sau death.
+- Enemy reuse có thể Attack lại sạch.
+- Projectile reuse không giữ state cũ.
+- Console không có lỗi đỏ trong test cuối task.
+
+---
 
 ## Tuần 5 - Thứ 6 — trạng thái cuối đã Play Test
 
@@ -299,86 +422,84 @@ Không có `BossRewardManager` ở giai đoạn hiện tại. Hai listener độ
 
 ---
 
-# 5. Next Task
+# 5. Current Task
 
-## Tuần 6 — Thứ 2: Enemy Architecture
-**CHƯA BẮT ĐẦU.**
+## Tuần 6 — Thứ 4: Damage System
+**ĐANG LÀM — chưa bắt đầu sửa code trong task này.**
 
 Theo V4.1:
+> Bổ sung `DamageCalculator` cho critical/knockback khi thật sự cần. Chuẩn hóa `DamageInfo` để truyền `amount`, `source`, `knockback`; tránh nhồi nhiều tham số rời vào `TakeDamage`.
 
-> Refactor `EnemyAI` cơ bản thành State Machine vừa đủ `Idle / Chase / Attack`. Tách state logic khỏi visual; `EnemyData` tiếp tục giữ stat. Chỉ tách Movement/Attack thành component/interface khi behavior thứ hai thực sự xuất hiện. A* Pathfinding vẫn là decision gate, không cài nếu direct chase vẫn đủ tốt.
-
-Mục tiêu kế tiếp:
+Mục tiêu trước mắt:
 
 ```text
-EnemyAI hiện tại
-├── detection
-├── chase
-├── contact attack
-├── telegraph
-├── cooldown
-├── death/reset pooling
-└── runtime Player reference
+Review damage flow hiện tại
         ↓
-review trách nhiệm hiện tại
+Player Projectile → ProjectileCollision → EnemyHealth
+Enemy Contact    → DamageSource / Enemy Attack → PlayerHealth
         ↓
-chốt State Machine tối thiểu
+Xác định dữ liệu damage đang truyền bằng int rời
         ↓
-Idle
-Chase
-Attack
+Chốt DamageInfo tối thiểu
         ↓
-không phá EnemyPool / ResetForReuse / death event
+Đánh giá DamageCalculator chỉ nếu critical/knockback thật sự cần
+        ↓
+Refactor từng đường damage
+        ↓
+Play Test regression
 ```
 
 Ranh giới bắt buộc:
-- Không tạo Behavior Tree/framework lớn.
-- Không tạo `IEnemyMovement` / `IEnemyAttack` chỉ để "đẹp" nếu chưa có implementation thứ hai.
-- Không kéo Enemy Ranged của Thứ 3 lên trước khi State Machine cơ bản đã test.
-- Không cài A* nếu chưa chứng minh direct chase thường xuyên kẹt trong dungeon thực tế.
-- Pooling contract phải giữ nguyên: Enemy reuse phải reset state/state machine sạch.
+- Không tạo `DamageCalculator` chỉ để có thêm class nếu chưa có công thức cần tính.
+- Không đưa critical/knockback vào gameplay nếu task hiện tại chưa chứng minh cần.
+- `DamageInfo` phải có tối thiểu `amount`, `source`, `knockback` theo roadmap; có thể để giá trị mặc định khi mechanic chưa dùng.
+- Không phá `EnemyHealth.OnDamaged` / `OnDeath`, `PlayerHealth.OnHealthChanged` / `OnDeath`.
+- Không phá projectile/enemy pooling.
+- Không để damage logic phụ thuộc HUD.
 
 ---
 
 # 6. First Next Step cho chat tiếp theo
 
-Trước khi sửa code Enemy Architecture, cần đọc code current:
+Trước khi viết `DamageInfo`, cần đọc và vẽ **damage flow hiện tại** của các đường sau:
 
 ```text
-EnemyAI.cs
-EnemyData.cs
-EnemyHealth.cs
-EnemyPool.cs
+Player Projectile
+→ ProjectileCollision
+→ EnemyHealth.TakeDamage(...)
+
+Enemy Contact / Melee
+→ MeleeEnemyAttack
+→ PlayerHealth.TakeDamage(...)
+
+Enemy Projectile
+→ EnemyProjectileCollision / ProjectileCollision hiện tại
+→ PlayerHealth.TakeDamage(...)
 ```
 
-Sau đó làm theo thứ tự nhỏ:
+Cần xác định rõ:
+1. Class nào là nơi tạo damage request.
+2. Class nào là nơi nhận damage.
+3. Damage hiện đang truyền những dữ liệu gì ngoài `amount`.
+4. `source` nên là object/reference nào ở từng trường hợp.
+5. Knockback hiện chưa có hay đã có một phần ở code current.
 
-```text
-1. Vẽ flow EnemyAI hiện tại.
-2. Chỉ ra state nào đang ẩn trong các bool hiện có.
-3. Chốt enum/state tối thiểu Idle / Chase / Attack.
-4. Refactor từng state một, giữ behavior cũ.
-5. Play Test regression trước khi tách thêm component/interface.
-```
-
-Không coi task DONE cho tới khi người dùng Play Test Enemy cơ bản sau refactor.
+Sau khi review xong mới chốt cấu trúc `DamageInfo`. **Chưa tự viết DamageCalculator trước bước review này.**
 
 ---
 
 # 7. Những thứ quan trọng CHƯA làm
 
 Không tự giả định đã có:
+- `DamageInfo` / `DamageCalculator` hoàn chỉnh.
 - DOTween pop/hút pickup ngoài world.
 - Player nhặt Item lớn / Item Effects/stat modifier.
 - NextFloor hoàn chỉnh, floor index và RunProgress.
-- Enemy State Machine nâng cao / Enemy Ranged.
-- DamageInfo / DamageCalculator hoàn chỉnh.
-- Enemy Spawn Marker Tile (mới là hướng có thể làm sau).
-- Large Room camera bounds/follow riêng.
+- Enemy Spawn Marker Tile (mới là hướng cải tiến về sau).
 - A* Pathfinding.
-- Boss system hoàn chỉnh.
+- Boss system hoàn chỉnh / Boss sequence orchestration.
 - Save / Audio / Main Menu / Pause / GameOver.
-- Player prefab hóa đã được xác nhận hoàn tất.
+- `IEnemyMovement` / `IEnemyAttack` interface; hiện chưa cần thêm tầng interface riêng.
 
 Đã có và đã Play Test:
 - Physical Coin/Heart/Key/Bomb pickup.
@@ -389,6 +510,8 @@ Không tự giả định đã có:
 - Loot Data weighted random cho pickup nhỏ và Item Pool.
 - Enemy/Drop/DamageText pooling.
 - Room lifecycle + Room transition + Cinemachine + Minimap.
+- Enemy Architecture State Machine tối thiểu.
+- Enemy Ranged + Projectile Pool integration.
 
 ---
 

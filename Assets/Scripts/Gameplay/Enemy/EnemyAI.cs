@@ -5,6 +5,13 @@ using UnityEngine;
 
 public class EnemyAI : MonoBehaviour
 {
+    private enum EnemyState
+    {
+        Idle,
+        Chase,
+        Attack
+    }
+
     [Header("Data")]
     [SerializeField] private EnemyData enemyData;
 
@@ -12,10 +19,8 @@ public class EnemyAI : MonoBehaviour
     [SerializeField] private Transform playerTransform;
     [SerializeField] private float detectionRange = 5f;
 
-    [Header("Attack Visual")]
-    [SerializeField] private Transform visualTransform;
-    [SerializeField] private float attackTelegraphDuration = 0.15f;
-    [SerializeField] private Vector3 attackPunchScale = new Vector3(0.15f, 0.15f, 0f);
+    [Header("Attack Behaviour")]
+    [SerializeField] private EnemyAttackBehaviour attackBehaviour;
 
     private Rigidbody2D enemyRigidbody;
 
@@ -23,27 +28,14 @@ public class EnemyAI : MonoBehaviour
 
     private bool isPlayerDetected;
 
-    private bool isTouchingPlayer;
-
-    private bool isAttacking;
-
     private bool isDead;
 
-    private float nextAttackTime;
-
-    private Vector3 originalVisualScale;
-
-    private Coroutine attackCoroutine;
+    private EnemyState currentState = EnemyState.Idle;
 
     private void Awake()
     {
         enemyRigidbody = GetComponent<Rigidbody2D>();
         enemyHealth = GetComponent<EnemyHealth>();
-
-        if (visualTransform != null)
-        {
-            originalVisualScale = visualTransform.localScale;
-        }
     }
 
     private void OnEnable()
@@ -54,16 +46,17 @@ public class EnemyAI : MonoBehaviour
         }
     }
 
-
     private void OnDisable()
     {
         if (enemyHealth != null)
         {
             enemyHealth.OnDeath -= HandleDeath;
         }
-        StopCurrentAttack();
 
-        ResetAttackVisual();
+        if (attackBehaviour != null)
+        {
+            attackBehaviour.ResetAttack();
+        }
 
         ResetRigidbody();
     }
@@ -71,19 +64,80 @@ public class EnemyAI : MonoBehaviour
     private void Update()
     {
         DetectPlayer();
+
+        if (isDead)
+        {
+            return;
+        }
+
+        UpdateStateFromPlayerConditions();
+
+        UpdateCurrentState();
+    }
+
+    private void UpdateStateFromPlayerConditions()
+    {
+        if (isPlayerDetected && attackBehaviour != null && attackBehaviour.CanAttack(playerTransform))
+        {
+            ChangeState(EnemyState.Attack);
+            return;
+        }
+
+        if (isPlayerDetected)
+        {
+            ChangeState(EnemyState.Chase);
+            return;
+        }
+
+        ChangeState(EnemyState.Idle);
+    }
+
+    private void UpdateCurrentState()
+    {
+        switch (currentState)
+        {
+            case EnemyState.Idle:
+                break;
+
+            case EnemyState.Chase:
+                break;
+
+            case EnemyState.Attack:
+                if (attackBehaviour != null)
+                {
+                    attackBehaviour.UpdateAttack(playerTransform);
+                }
+                break;
+        }
+    }
+
+    private void ChangeState(EnemyState newState)
+    {
+        if (currentState == newState)
+        {
+            return;
+        }
+
+        currentState = newState;
     }
 
     private void FixedUpdate()
     {
-        if (isPlayerDetected && !isTouchingPlayer)
+        if (isDead)
         {
-            ChasePlayer();
+            return;
         }
+
+        if (currentState != EnemyState.Chase)
+        {
+            return;
+        }
+
+        UpdateChaseState();
     }
 
-    private void ChasePlayer()
+    private void UpdateChaseState()
     {
-        if (isDead) return;
         if (playerTransform == null || enemyData == null)
         {
             return;
@@ -107,125 +161,21 @@ public class EnemyAI : MonoBehaviour
         isPlayerDetected = distanceToPlayer <= detectionRange;
     }
 
-    private void OnTriggerStay2D(Collider2D other)
-    {
-        if (!other.TryGetComponent<PlayerHealth>(out PlayerHealth playerHealth))
-        {
-            return;
-        }
-        isTouchingPlayer = true;
-
-        TryAttack(playerHealth);
-    }
-
-
-    private void OnTriggerExit2D(Collider2D other)
-    {
-        if (!other.TryGetComponent<PlayerHealth>(out PlayerHealth playerHealth))
-        {
-            return;
-        }
-        isTouchingPlayer = false;
-    }
-
-
-    private void TryAttack(PlayerHealth playerHealth)
-    {
-        if (isDead)
-        {
-            return;
-        }
-        if (enemyData == null)
-        {
-            return;
-        }
-        if (isAttacking)
-        {
-            return;
-        }
-        if (Time.time < nextAttackTime)
-        {
-            return;
-        }
-        attackCoroutine =  StartCoroutine(AttackCoroutine(playerHealth));
-    }
-
-
-    private IEnumerator AttackCoroutine(PlayerHealth playerHealth)
-    {
-        isAttacking = true;
-
-        PlayAttackTelegraph();
-
-        yield return new WaitForSeconds(attackTelegraphDuration);
-
-        if (!isDead && isTouchingPlayer && playerHealth != null)
-        {
-            playerHealth.TakeDamage(enemyData.AttackDamage);
-        }
-        nextAttackTime = Time.time + enemyData.AttackCooldown;
-        isAttacking = false;
-    }
-
-
-    private void PlayAttackTelegraph()
-    {
-        if (visualTransform == null)
-        {
-            return;
-        }
-        visualTransform.DOKill();
-
-        visualTransform.localScale = originalVisualScale;
-
-        visualTransform.DOPunchScale(
-            attackPunchScale,
-            attackTelegraphDuration,
-            5,
-            0.5f
-        );
-    }
-
     public void ResetForReuse()
     {
         isDead = false;
 
+        currentState = EnemyState.Idle;
+
         isPlayerDetected = false;
 
-        isTouchingPlayer = false;
-
-        StopCurrentAttack();
-
-        nextAttackTime = 0f;
-
-        ResetAttackVisual();
+        if (attackBehaviour != null)
+        {
+            attackBehaviour.ResetAttack();
+        }
 
         ResetRigidbody();
     }
-
-    private void StopCurrentAttack()
-    {
-        if (attackCoroutine != null)
-        {
-            StopCoroutine(attackCoroutine);
-            attackCoroutine = null;
-        }
-
-        isAttacking = false;
-    }
-
-
-    private void ResetAttackVisual()
-    {
-        if (visualTransform == null)
-        {
-            return;
-        }
-
-        visualTransform.DOKill();
-        visualTransform.localScale = originalVisualScale;
-    }
-
 
     private void ResetRigidbody()
     {
@@ -240,12 +190,13 @@ public class EnemyAI : MonoBehaviour
     private void HandleDeath(EnemyHealth deadEnemyHealth)
     {
         isDead = true;
+
         isPlayerDetected = false;
-        isTouchingPlayer = false;
 
-        StopCurrentAttack();
-
-        ResetAttackVisual();
+        if (attackBehaviour != null)
+        {
+            attackBehaviour.ResetAttack();
+        }
 
         ResetRigidbody();
     }

@@ -23,6 +23,8 @@ public class RoomController : MonoBehaviour
     private CameraController cameraController;
 
 
+    private ProjectilePool enemyProjectilePool;
+
     private EnemyPool enemyPool;
 
     private EnemyHealth[] roomEnemies;
@@ -58,6 +60,11 @@ public class RoomController : MonoBehaviour
     private void OnDisable()
     {
         UnsubscribeFromEnemyEvents();
+    }
+
+    public void SetEnemyProjectilePool(ProjectilePool newEnemyProjectilePool)
+    {
+        enemyProjectilePool = newEnemyProjectilePool;
     }
 
     private void FindRoomEnemies()
@@ -122,14 +129,11 @@ public class RoomController : MonoBehaviour
 
         if (usesEnemyPoolForRuntimeEnemies && enemyPool != null)
         {
-            StartCoroutine(
-        ReleaseEnemyNextFrame(deadEnemyHealth)
-    );
+            StartCoroutine(ReleaseEnemyNextFrame(deadEnemyHealth));
         }
     }
 
-    private IEnumerator ReleaseEnemyNextFrame(
-    EnemyHealth deadEnemyHealth)
+    private IEnumerator ReleaseEnemyNextFrame(EnemyHealth deadEnemyHealth)
     {
         yield return null;
 
@@ -329,6 +333,13 @@ public class RoomController : MonoBehaviour
         if (enemyAI != null)
         {
             enemyAI.SetPlayerTransform(playerTransform);
+        }
+
+        RangedEnemyAttack rangedEnemyAttack = spawnedEnemy.GetComponent<RangedEnemyAttack>();
+
+        if (rangedEnemyAttack != null)
+        {
+            rangedEnemyAttack.SetProjectilePool(enemyProjectilePool);
         }
 
         EnemyDeathCameraShake enemyDeathCameraShake = spawnedEnemy.GetComponent<EnemyDeathCameraShake>();

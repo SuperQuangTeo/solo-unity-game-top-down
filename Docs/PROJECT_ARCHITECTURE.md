@@ -1380,7 +1380,7 @@ Trách nhiệm:
 ```text
 FloorEdgarConfig
 ├── FloorData
-└── LevelGraph
+└── List<LevelGraph>
 ```
 
 Đây là **điểm ánh xạ tập trung** giữa dữ liệu project và asset Edgar.
@@ -1390,17 +1390,34 @@ Flow:
 ```text
 FloorData
     +
-LevelGraph Edgar
+List<LevelGraph> Edgar
     ↓
 FloorEdgarConfig
 ```
 
+`FloorEdgarConfig` dùng `List<LevelGraph>` để cho phép một Floor có nhiều layout graph được cấu hình sẵn. Các graph có thể có số room khác nhau.
+
+`FloorData.RoomCount` không còn được `FloorEdgarConfig` dùng để validate số room của Edgar Graph. Số room thực tế của layout được xác định trực tiếp bởi `LevelGraph.Rooms.Count`.
+
 `OnValidate()` hiện kiểm tra tối thiểu:
-- `FloorData.RoomCount` có khớp số node graph không;
+- danh sách `LevelGraph` có tồn tại và không có phần tử null;
 - có `RoomType.Start` không;
 - có `RoomType.Boss` không.
 
 Mục đích của validation là phát hiện cấu hình sai ngay trong Editor, trước khi Play.
+
+##### Multiple LevelGraph variants
+
+Một `FloorEdgarConfig` có thể chứa nhiều `LevelGraph`:
+
+```text
+FloorEdgarConfig
+├── Graph A → 6 rooms
+├── Graph B → 8 rooms
+└── Graph C → 10 rooms
+```
+
+`EdgarDungeonGenerator` random chọn một graph trước khi gọi `Generate()`. Room Template của từng graph vẫn được cấu hình thủ công trên node trong Edgar Graph Editor; không có runtime random Room Template riêng.
 
 ---
 
@@ -1439,9 +1456,10 @@ Assets/Scripts/Gameplay/Dungeon/EdgarDungeonGenerator.cs
 Trách nhiệm duy nhất:
 1. kiểm tra reference;
 2. lấy `FloorEdgarConfig`;
-3. gán `LevelGraph` cho Edgar generator;
-4. gán random/fixed seed;
-5. gọi `Generate()`.
+3. random chọn một `LevelGraph` từ danh sách;
+4. gán `LevelGraph` đã chọn cho Edgar generator;
+5. gán random/fixed seed;
+6. gọi `Generate()`.
 
 Flow:
 
@@ -1453,6 +1471,9 @@ GenerateDungeon()
 ValidateReferences()
   ↓
 ApplyFloorConfiguration()
+  ├── random chọn 1 LevelGraph
+  ├── gán graph vào FixedLevelGraphConfig
+  └── gán seed
   ↓
 DungeonGeneratorGrid2D.Generate()
 ```
@@ -2824,6 +2845,180 @@ Chỉ cân nhắc nếu Enemy direct chase trong dungeon Edgar thực tế thư�
 
 ---
 
+
+# 19Q. Enemy Architecture + Enemy Ranged — Tuần 6 — DONE
+
+## Enemy State Machine tối thiểu
+
+`EnemyAI` hiện giữ ba State chính:
+
+```text
+Idle
+ ↓
+Detect Player
+ ↓
+Chase
+ ↓
+Attack
+```
+
+`EnemyAI` chịu trách nhiệm:
+- Detection Player.
+- Chuyển State `Idle / Chase / Attack`.
+- Chase bằng `Rigidbody2D.MovePosition()`.
+- Death/reset lifecycle.
+- Runtime Player reference.
+
+`EnemyAI` **không còn chứa chi tiết Attack cụ thể của từng loại Enemy**.
+
+## Attack Behaviour
+
+```text
+EnemyAI
+    ↓
+EnemyAttackBehaviour
+    ├── MeleeEnemyAttack
+    └── RangedEnemyAttack
+```
+
+`EnemyAttackBehaviour` là `abstract MonoBehaviour` và có contract:
+
+```text
+CanAttack(playerTransform)
+→ Attack Behaviour có đủ điều kiện để Enemy vào Attack State không?
+
+UpdateAttack(playerTransform)
+→ Chạy logic Attack của implementation hiện tại.
+
+ResetAttack()
+→ Dọn state/coroutine/tween/cooldown khi death, disable hoặc Pool reuse.
+```
+
+### Vì sao dùng abstract MonoBehaviour thay vì interface riêng?
+
+Hiện tại Unity cần kéo trực tiếp component Attack vào field của `EnemyAI`. `abstract MonoBehaviour` cho phép:
+
+```text
+EnemyAI.attackBehaviour
+        ↓
+MeleeEnemyAttack
+hoặc
+RangedEnemyAttack
+```
+
+`IEnemyAttack` **chưa được thêm**. Chỉ cân nhắc interface khi có nhu cầu chung lớn hơn thực tế hiện tại; không thêm thêm một tầng abstraction chỉ để “đẹp”.
+
+## MeleeEnemyAttack
+
+Đã chuyển khỏi `EnemyAI`:
+- Contact Player detection.
+- Attack cooldown.
+- Telegraph.
+- Damage request.
+- Attack Coroutine.
+- Telegraph tween/reset.
+
+Melee `CanAttack()` dựa trên contact với Player.
+
+## RangedEnemyAttack
+
+Ranged dùng chung `EnemyAI` và `EnemyAttackBehaviour`, nhưng thay điều kiện/logic Attack:
+
+```text
+Detection Range
+→ EnemyAI xác định Player đã được phát hiện
+
+Attack Range
+→ RangedEnemyAttack.CanAttack()
+
+đủ điều kiện
+→ Attack State
+→ Telegraph
+→ Shoot Projectile
+```
+
+Ranged có:
+- `attackRange`.
+- `firePoint`.
+- `projectileSpawnOffset`.
+- `projectileSpeed`.
+- `projectileLifetime`.
+- `EnemyData.AttackDamage` làm nguồn damage.
+
+Telegraph chỉ dùng DOTween trên child `Visual`; không tween Rigidbody2D root.
+
+## Runtime Projectile Pool injection
+
+`RangedEnemyAttack` không giữ Scene `ProjectilePool` cứng trong prefab.
+
+Flow:
+
+```text
+EnemyProjectilePool (Scene)
+        ↓
+EdgarDungeonPostProcessing / runtime setup
+        ↓
+RoomController
+        ↓
+RangedEnemyAttack.SetProjectilePool(...)
+        ↓
+RangedEnemyAttack.ShootProjectile()
+        ↓
+ProjectilePool.GetProjectile()
+```
+
+Prefab chỉ giữ contract component; Scene dependency được cấp lại khi Enemy được spawn/reuse.
+
+## Enemy Ranged pooling contract
+
+Khi Enemy chết/disable/reuse:
+
+```text
+RangedEnemyAttack.ResetAttack()
+├── dừng Attack Coroutine
+├── reset isAttacking
+├── reset cooldown
+└── DOKill + reset Visual
+```
+
+Projectile vẫn tuân contract cũ:
+
+```text
+GetProjectile()
+↓
+Initialize()
+↓
+Move bằng Rigidbody2D.MovePosition()
+↓
+Collision / Lifetime
+↓
+ReturnToPool()
+↓
+ProjectilePool.ReleaseProjectile()
+```
+
+## Regression đã Play Test
+
+```text
+✓ Idle / Chase / Attack đúng.
+✓ Melee sau refactor vẫn đúng.
+✓ Ranged Detection / Attack Range đúng.
+✓ Telegraph trước Attack.
+✓ Projectile dùng Pool.
+✓ Projectile collision Player / Environment đúng.
+✓ Enemy chết giữa telegraph không bắn sau death.
+✓ Enemy Pool reuse sạch.
+✓ Projectile Pool reuse sạch.
+✓ `EnemyData.AttackDamage` điều khiển damage Ranged.
+✓ Không tween Rigidbody2D root.
+✓ Console sạch.
+```
+
+## Pathfinding decision gate
+
+A* vẫn **chưa cài**. Direct chase chưa được chứng minh là thường xuyên kẹt trong dungeon Edgar, nên chưa thêm dependency/pathfinding abstraction.
+
+
 # 20. Kiến trúc module hiện tại của project
 
 > Kiến trúc module phải bám theo folder structure thực tế trong Unity. Lịch sử cũ có thể nhắc `RewardSpawnPoint`, nhưng **current architecture sau Tuần 5 ưu tiên Marker Tile**.
@@ -2842,7 +3037,13 @@ Gameplay/Player
 → input / movement / dash / shooter / health / run resources tối thiểu
 
 Gameplay/Enemy
-→ health / AI / hit feedback / pool
+├── EnemyHealth
+├── EnemyAI
+├── EnemyAttackBehaviour
+├── MeleeEnemyAttack
+├── RangedEnemyAttack
+├── EnemyHitFeedback
+└── EnemyPool
 
 Gameplay/Projectile
 → projectile / collision / pool
@@ -2923,10 +3124,9 @@ Không tạo `BossRewardManager` chỉ để gom hai listener. Manager/Coordinat
 # 21. Những thứ cố ý CHƯA làm
 
 Không được tự giả định các phần sau đã tồn tại hoặc đã hoàn thành:
-- Enemy Architecture nâng cao / State Machine `Idle / Chase / Attack` — task kế tiếp.
-- Tách Movement/Attack thành component/interface tái sử dụng.
-- Enemy Ranged.
-- DamageInfo / DamageCalculator.
+- DamageInfo / DamageCalculator hoàn chỉnh — **current task: Tuần 6 - Thứ 4**.
+- Critical / knockback gameplay hoàn chỉnh; chỉ thêm khi nhu cầu thực tế chứng minh cần.
+- IEnemyMovement / IEnemyAttack interface riêng; hiện `EnemyAttackBehaviour` abstract component đã đủ.
 - DOTween pop/hút Small Pickup ngoài world.
 - Player nhặt Item lớn và Item Effects/stat modifier.
 - NextFloor hoàn chỉnh, floor index và RunProgress/ProgressionManager.
@@ -3015,9 +3215,14 @@ ProjectileCollision   → collision filtering + chuyển damage sang EnemyHealth
 ProjectilePool        → object reuse
 EnemyHealth           → enemy HP + damage/death events
 EnemyHitFeedback      → enemy hit visual
-EnemyAI               → detection/chase/contact attack cơ bản ở Tuần 3; refactor architecture ở Tuần 6
+EnemyAI               → detection + State Machine Idle/Chase/Attack + Chase + death/reset + gọi Attack Behaviour
+EnemyAttackBehaviour  → contract Attack chung: CanAttack / UpdateAttack / ResetAttack
+MeleeEnemyAttack      → contact Attack + telegraph + cooldown + melee damage
+RangedEnemyAttack     → ranged Attack + range check + telegraph + projectile spawn
 PlayerHealth          → player HP + invincibility + health/death events
-DamageSource          → contact damage request
+DamageSource          → contact damage request (legacy/current path trước Damage System refactor)
+DamageInfo            → CHƯA có; current task chuẩn hóa damage payload
+DamageCalculator      → CHƯA có; chỉ thêm khi critical/knockback thật sự cần
 ```
 
 ## Physics vs Visual

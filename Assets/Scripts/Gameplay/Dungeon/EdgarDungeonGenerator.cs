@@ -1,4 +1,5 @@
 using Edgar.Unity;
+using System.Collections.Generic;
 using UnityEngine;
 
 public class EdgarDungeonGenerator : MonoBehaviour
@@ -53,6 +54,16 @@ public class EdgarDungeonGenerator : MonoBehaviour
 
             return false;
         }
+        if (floorEdgarConfig.LevelGraphs == null ||
+           floorEdgarConfig.LevelGraphs.Count == 0)
+        {
+            Debug.LogError(
+                "FloorEdgarConfig does not contain any Level Graph.",
+                this
+            );
+
+            return false;
+        }
         return true;
     }
 
@@ -60,8 +71,26 @@ public class EdgarDungeonGenerator : MonoBehaviour
     {
         FloorData floorData = floorEdgarConfig.FloorData;
 
-        dungeonGenerator.FixedLevelGraphConfig.LevelGraph = floorEdgarConfig.LevelGraph;
+        LevelGraph selectedLevelGraph = GetRandomLevelGraph();
+
+        dungeonGenerator.FixedLevelGraphConfig.LevelGraph = selectedLevelGraph;
         dungeonGenerator.UseRandomSeed = floorData.UseRandomSeed;
         dungeonGenerator.RandomGeneratorSeed = floorData.FixedSeed;
+    }
+
+    private LevelGraph GetRandomLevelGraph()
+    {
+        List<LevelGraph> levelGraphs = floorEdgarConfig.LevelGraphs;
+
+        int randomIndex = Random.Range(0, levelGraphs.Count);
+
+        LevelGraph selectedLevelGraph = levelGraphs[randomIndex];
+
+        Debug.Log(
+            $"Selected Level Graph: {selectedLevelGraph.name}",
+            this
+        );
+
+        return selectedLevelGraph;
     }
 }

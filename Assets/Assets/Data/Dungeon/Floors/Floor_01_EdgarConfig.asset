@@ -13,4 +13,7 @@ MonoBehaviour:
   m_Name: Floor_01_EdgarConfig
   m_EditorClassIdentifier: Assembly-CSharp::FloorEdgarConfig
   floorData: {fileID: 11400000, guid: 45566bbccecffb5478c86e58c0ca8ad3, type: 2}
-  levelGraph: {fileID: 11400000, guid: c4adad035d46e35448f7a1f2338ec188, type: 2}
+  levelGraphs:
+  - {fileID: 11400000, guid: c4adad035d46e35448f7a1f2338ec188, type: 2}
+  - {fileID: 11400000, guid: 7fc73a67d4d0b654fb5397bcc496c352, type: 2}
+  - {fileID: 11400000, guid: be12282331bb45646a5e558739579f00, type: 2}
