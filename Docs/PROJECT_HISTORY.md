@@ -2760,3 +2760,62 @@ DungeonGeneratorGrid2D.Generate()
 ### Ghi chú
 Đây là điều chỉnh kiến trúc bổ sung cho Edgar Free, không phải task roadmap mới. Task hiện tại của roadmap vẫn là **Tuần 6 - Thứ 4 — Damage System**.
 
+---
+## 2026-10-12 — Prototype Next Floor trong cùng Scene — PLAY TEST PASS
+
+### Mục tiêu
+
+Kiểm tra vòng chạy nhỏ để Player có thể đi từ Floor hiện tại sang Floor config kế tiếp, chưa triển khai `RunProgress`, route hoặc Branch Point production.
+
+### Flow đã triển khai
+
+```text
+Boss clear
+    ↓
+FloorExit spawn trong Boss Room
+    ↓
+Player chạm FloorExit
+    ↓
+FloorTransitionPrototype tăng floor index tạm thời
+    ↓
+Release Enemy / Projectile / Drop đang rented về pool
+    ↓
+Edgar xóa Generated Level cũ
+    ↓
+Edgar generate FloorEdgarConfig kế tiếp
+    ↓
+Post-processing rebuild Room/Doors/Minimap/runtime references
+    ↓
+Player về Start Room mới qua PlayerSpawnPoint
+```
+
+### Thay đổi đáng nhớ
+
+- Các pool thêm tracking object đang rented và hàm `ReleaseAllRented...()` để cleanup trước khi Edgar xóa dungeon.
+- `FloorExitSpawner` nhận `FloorTransitionPrototype` bằng runtime injection; Room prefab không giữ Scene reference.
+- FloorExit được parent vào Room runtime để không tồn tại sau khi dungeon cũ bị cleanup.
+- Item Pedestal được parent vào Room runtime vì đây là object world không dùng pool.
+- `EdgarDungeonGenerator` nhận Floor config mới và generate lại trong cùng scene.
+
+### Regression đã Play Test
+
+```text
+✓ Player chạm FloorExit phát request đúng một lần.
+✓ Floor config kế tiếp được chọn theo index tạm thời.
+✓ Enemy/Projectile/Drop được cleanup trước khi generate lại.
+✓ Dungeon cũ được Edgar cleanup.
+✓ Dungeon mới generate và post-processing chạy lại.
+✓ Player xuất hiện ở Start Room mới.
+✓ Room transition, Camera và Minimap dùng reference của Floor mới.
+✓ Không có lỗi đỏ Console trong test cuối.
+```
+
+### Chưa làm
+
+- `RunProgress` production.
+- Branch Point và chọn Surface/DeepEarth.
+- `SelectedRoute`, save/load progression và End Run.
+- Loading/fade transition.
+
+Prototype này không đánh dấu task `Boss Flow` Tuần 7 là DONE.
+

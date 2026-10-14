@@ -512,12 +512,52 @@ Không tự giả định đã có:
 - Room lifecycle + Room transition + Cinemachine + Minimap.
 - Enemy Architecture State Machine tối thiểu.
 - Enemy Ranged + Projectile Pool integration.
+- Prototype Next Floor trong cùng Gameplay scene: FloorExit → cleanup runtime pool → Edgar generate Floor config tiếp theo → rebuild Room/Minimap → Player về Start Room mới.
+
+## Prototype Next Floor — CODE COMPLETE — UNITY PLAY TEST PASS
+
+Phạm vi prototype đã xác nhận:
+
+```text
+Boss clear
+    ↓
+FloorExit spawn trong Boss Room
+    ↓
+Player chạm FloorExit
+    ↓
+FloorTransitionPrototype chọn FloorEdgarConfig kế tiếp
+    ↓
+Enemy / Projectile / Drop đang rented được trả về pool
+    ↓
+Edgar xóa Generated Level cũ và generate lại
+    ↓
+EdgarDungeonPostProcessing rebuild Room, Door, Minimap và runtime references
+    ↓
+RoomTransitionController đưa Player về PlayerSpawnPoint của Start Room mới
+```
+
+Đã thêm/điều chỉnh contract prototype:
+
+- `EnemyPool`, `ProjectilePool`, `DropPool` tracking object đang rented và có hàm `ReleaseAllRented...()` trước khi đổi Floor.
+- `FloorExit` được nối qua `FloorExitSpawner` tới `FloorTransitionPrototype` bằng runtime injection.
+- `FloorExit` và `ItemPedestal` được parent vào Room runtime để Edgar cleanup cùng dungeon cũ.
+- `EdgarDungeonGenerator` nhận `FloorEdgarConfig` mới và generate lại trong cùng scene.
+- `FloorTransitionPrototype` giữ danh sách Floor config theo thứ tự và floor index tạm thời.
+
+Giới hạn prototype:
+
+- Chưa có `RunProgress` production.
+- Chưa có Branch Point, Surface/DeepEarth route hoặc SelectedRoute.
+- Chưa có save/load progression, End Run hoặc loading/fade transition.
+- Đây chưa phải task `Boss Flow` hoàn chỉnh của Tuần 7.
 
 ---
 
 # 8. Known Issues / Blocker hiện tại
 
 **Không có blocker đã biết.**
+
+Prototype Next Floor đã Play Test PASS. Roadmap chính thức vẫn giữ `NextFloor hoàn chỉnh / floor index / RunProgress` ở Tuần 7; không đánh dấu task roadmap này DONE chỉ từ prototype.
 
 Ghi chú Edgar Editor cũ:
 - Từng xuất hiện `SerializedObjectNotCreatableException` từ Custom Inspector Edgar sau compile.

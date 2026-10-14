@@ -12,6 +12,8 @@ public class EdgarDungeonGenerator : MonoBehaviour
     [SerializeField]
     private DungeonGeneratorGrid2D dungeonGenerator;
 
+    public FloorEdgarConfig CurrentFloorEdgarConfig => floorEdgarConfig;
+
     private void Start()
     {
         GenerateDungeon();
@@ -19,20 +21,46 @@ public class EdgarDungeonGenerator : MonoBehaviour
 
     public void GenerateDungeon()
     {
+        TryGenerateDungeon();
+    }
+
+    public bool TryGenerateDungeon()
+    {
         if (!ValidateReferences())
         {
-            return;
+            return false;
         }
+
         ApplyFloorConfiguration();
 
         dungeonGenerator.Generate();
+
+        return true;
     }
 
-    [ContextMenu("Test Generate Dungeon")]
-    private void TestGenerateDungeon()
+    public bool SetFloorEdgarConfig(FloorEdgarConfig newFloorEdgarConfig)
     {
-        GenerateDungeon();
+        if (newFloorEdgarConfig == null)
+        {
+            Debug.LogError(
+                "cannot change Floor cause FloorEdgarConfig is null.",
+                this
+            );
+
+            return false;
+        }
+
+        floorEdgarConfig = newFloorEdgarConfig;
+
+        Debug.Log(
+            $"EdgarDungeonGenerator recieved Floor config: " +
+            $"{floorEdgarConfig.name}",
+            this
+        );
+
+        return true;
     }
+
 
     private bool ValidateReferences()
     {
@@ -92,5 +120,11 @@ public class EdgarDungeonGenerator : MonoBehaviour
         );
 
         return selectedLevelGraph;
+    }
+
+    [ContextMenu("Test Generate Dungeon")]
+    private void TestGenerateDungeon()
+    {
+        GenerateDungeon();
     }
 }

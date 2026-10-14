@@ -168,7 +168,7 @@ Nếu yêu cầu đã rõ và người dùng đã yêu cầu implement, có th�
 
 ## 7. Quy tắc viết C#
 
-- Code phải tường minh, dễ đọc cho người mới.
+- Code phải tường minh, dễ đọc.
 - Không viết tắt tên biến/hàm khó hiểu.
 - Chia hàm nhỏ theo trách nhiệm rõ ràng.
 - Comment bằng tiếng Việt ở các dòng/đoạn logic quan trọng.

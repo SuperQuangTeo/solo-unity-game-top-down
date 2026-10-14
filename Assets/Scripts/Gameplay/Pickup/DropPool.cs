@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Pool;
 
@@ -12,6 +13,8 @@ public class DropPool : MonoBehaviour
     [SerializeField] private int maxSize = 30;
 
     private ObjectPool<PooledDrop> dropPool;
+
+    private readonly HashSet<PooledDrop> rentedDrops = new HashSet<PooledDrop>();
 
     private void Awake()
     {
@@ -46,6 +49,7 @@ public class DropPool : MonoBehaviour
             return;
         }
 
+        rentedDrops.Add(pooledDrop);
         pooledDrop.ResetForReuse();
     }
 
@@ -85,6 +89,21 @@ public class DropPool : MonoBehaviour
         {
             return;
         }
+        if (!rentedDrops.Remove(pooledDrop))
+        {
+            return;
+        }
+
         dropPool.Release(pooledDrop);
+    }
+
+    public void ReleaseAllRentedDrops()
+    {
+        List<PooledDrop> dropsToRelease = new List<PooledDrop>(rentedDrops);
+
+        foreach (PooledDrop pooledDrop in dropsToRelease)
+        {
+            ReleaseDrop(pooledDrop);
+        }
     }
 }

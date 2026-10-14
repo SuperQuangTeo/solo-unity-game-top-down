@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Pool;
 
@@ -12,6 +13,7 @@ public class EnemyPool : MonoBehaviour
 
     private ObjectPool<EnemyHealth> enemyPool;
 
+    private readonly HashSet<EnemyHealth> rentedEnemies = new HashSet<EnemyHealth>();
 
     private void Awake()
     {
@@ -43,6 +45,7 @@ public class EnemyPool : MonoBehaviour
         {
             return;
         }
+        rentedEnemies.Add(enemyHealth);
 
         enemyHealth.ResetForReuse();
 
@@ -92,7 +95,6 @@ public class EnemyPool : MonoBehaviour
         return enemyHealth;
     }
 
-
     public void ReleaseEnemy(EnemyHealth enemyHealth)
     {
         if (enemyHealth == null)
@@ -100,6 +102,21 @@ public class EnemyPool : MonoBehaviour
             return;
         }
 
+        if (!rentedEnemies.Remove(enemyHealth))
+        {
+            return;
+        }
+
         enemyPool.Release(enemyHealth);
+    }
+
+    public void ReleaseAllRentedEnemies()
+    {
+        List<EnemyHealth> enemiesToRelease = new List<EnemyHealth>(rentedEnemies);
+
+        foreach (EnemyHealth enemyHealth in enemiesToRelease)
+        {
+            ReleaseEnemy(enemyHealth);
+        }
     }
 }

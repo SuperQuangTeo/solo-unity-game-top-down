@@ -19,6 +19,7 @@ public class EdgarDungeonPostProcessing : DungeonGeneratorPostProcessingComponen
     [SerializeField] private EnemyPool enemyPool;
     [SerializeField] private DropPool dropPool;
     [SerializeField] private ProjectilePool enemyProjectilePool;
+    [SerializeField] private FloorTransitionPrototype floorTransitionPrototype;
 
     public override void Run(DungeonGeneratorLevelGrid2D level)
     {
@@ -90,6 +91,8 @@ public class EdgarDungeonPostProcessing : DungeonGeneratorPostProcessingComponen
         roomController.SetEnemyProjectilePool(enemyProjectilePool);
 
         SetupRoomLootDropSpawner(roomTemplateInstance);
+
+        SetupFloorExitSpawner(roomTemplateInstance);
 
         Debug.Log(
             $"Room '{roomTemplateInstance.name}' " +
@@ -493,6 +496,21 @@ public class EdgarDungeonPostProcessing : DungeonGeneratorPostProcessingComponen
         }
 
         roomTrigger.SetRoomTransitionController(roomTransitionController);
+    }
+
+    private void SetupFloorExitSpawner(GameObject roomTemplateInstance)
+    {
+        FloorExitSpawner floorExitSpawner =
+            roomTemplateInstance.GetComponent<FloorExitSpawner>();
+
+        if (floorExitSpawner == null)
+        {
+            return;
+        }
+
+        floorExitSpawner.SetFloorTransitionPrototype(
+            floorTransitionPrototype
+        );
     }
 
     private RoomInstanceGrid2D FindConnectedGameplayRoom(RoomInstanceGrid2D sourceRoomInstance, RoomInstanceGrid2D connectedRoomInstance)

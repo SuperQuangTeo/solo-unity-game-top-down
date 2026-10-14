@@ -111,7 +111,8 @@ public class RoomItemRewardSpawner : MonoBehaviour
         {
             return;
         }
-        spawnedItemPedestal = Instantiate( itemPedestalPrefab, spawnPosition,Quaternion.identity);
+
+        spawnedItemPedestal = Instantiate(itemPedestalPrefab, spawnPosition, Quaternion.identity, transform);
 
         spawnedItemPedestal.Configure(rolledItem);
     }

@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Pool;
 
@@ -11,6 +12,7 @@ public class ProjectilePool : MonoBehaviour
 
     private ObjectPool<Projectile> projectilePool;
 
+    private readonly HashSet<Projectile> rentedProjectiles = new HashSet<Projectile>();
 
     private void Awake()
     {
@@ -43,6 +45,12 @@ public class ProjectilePool : MonoBehaviour
 
     private void OnGetProjectile(Projectile projectile)
     {
+        if (projectile == null)
+        {
+            return;
+        }
+
+        rentedProjectiles.Add(projectile);
         projectile.gameObject.SetActive(true);
     }
 
@@ -72,6 +80,24 @@ public class ProjectilePool : MonoBehaviour
 
     public void ReleaseProjectile(Projectile projectile)
     {
+        if (projectile == null)
+        {
+            return;
+        }
+        if (!rentedProjectiles.Remove(projectile))
+        {
+            return;
+        }
         projectilePool.Release(projectile);
+    }
+
+    public void ReleaseAllRentedProjectiles()
+    {
+        List<Projectile> projectilesToRelease = new List<Projectile>(rentedProjectiles);
+
+        foreach (Projectile projectile in projectilesToRelease)
+        {
+            ReleaseProjectile(projectile);
+        }
     }
 }

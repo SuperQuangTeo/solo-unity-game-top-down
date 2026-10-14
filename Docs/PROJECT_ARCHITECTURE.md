@@ -3121,6 +3121,71 @@ Không tạo `BossRewardManager` chỉ để gom hai listener. Manager/Coordinat
 
 ---
 
+# 20A. Prototype Next Floor trong cùng Scene — CODE COMPLETE — PLAY TEST PASS
+
+Prototype này kiểm tra riêng khả năng đi từ Floor hiện tại sang Floor config kế tiếp trong cùng `Gameplay` scene. Nó chưa thay thế `RunProgress` hoặc `Boss Flow` production của roadmap Tuần 7.
+
+### Runtime flow
+
+```text
+FloorExit.OnPlayerEnteredExit
+        ↓
+FloorExitSpawner
+        ↓ runtime injection
+FloorTransitionPrototype
+        ↓
+Chọn FloorEdgarConfig tiếp theo theo floor index tạm thời
+        ↓
+EnemyPool.ReleaseAllRentedEnemies()
+ProjectilePool.ReleaseAllRentedProjectiles()
+DropPool.ReleaseAllRentedDrops()
+        ↓
+EdgarDungeonGenerator.TryGenerateDungeon()
+        ↓
+Edgar xóa children của Generated Level cũ
+        ↓
+EdgarDungeonPostProcessing.Run(level)
+        ↓
+Build lại Room/Doors/Minimap/runtime references
+        ↓
+RoomTransitionController.SetInitialRoom(Start Room)
+        ↓
+Player tới PlayerSpawnPoint mới
+```
+
+### Pool lifecycle contract khi đổi Floor
+
+- Enemy được `EnemyPool.GetEnemy()` parent vào `Enemies` container của Room. Trước khi Edgar cleanup, `ReleaseAllRentedEnemies()` phải chạy để Enemy trở về pool thay vì bị Destroy cùng Room khi còn đang được mượn.
+- Projectile thuộc `ProjectilePool` Scene object nên không bị Edgar xóa. Trước khi generate Floor mới, `ReleaseAllRentedProjectiles()` dừng và reset projectile cũ.
+- Drop thuộc `DropPool` Scene object nên không bị Edgar xóa. `ReleaseAllRentedDrops()` đưa pickup chưa nhặt về pool để không mang reward của Floor cũ sang Floor mới.
+- Item Pedestal và FloorExit được parent vào Room runtime, nên Edgar cleanup chúng cùng dungeon cũ.
+
+### Ranh giới module
+
+```text
+FloorExit
+→ chỉ phát event
+
+FloorExitSpawner
+→ spawn Exit và chuyển event qua runtime injection
+
+FloorTransitionPrototype
+→ giữ floor index/config tạm thời và điều phối teardown/generate
+
+EdgarDungeonGenerator
+→ nhận FloorEdgarConfig và gọi Edgar Generate
+
+EdgarDungeonPostProcessing
+→ nối level Edgar mới với Room/Minimap/Pool/Camera của project
+```
+
+### Giới hạn
+
+- Chưa có `RunProgress` production hoặc `ProgressionManager`.
+- Chưa có Branch Point, `SelectedRoute`, Surface Route hoặc Deep Earth Route.
+- Chưa có save/load, End Run hoặc loading/fade transition.
+- Không đánh dấu task `Boss Flow` Tuần 7 là DONE từ prototype này.
+
 # 21. Những thứ cố ý CHƯA làm
 
 Không được tự giả định các phần sau đã tồn tại hoặc đã hoàn thành:
