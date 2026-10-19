@@ -3,7 +3,7 @@
 > **Dashboard bàn giao giữa các phiên chat.**
 > File này chỉ giữ trạng thái hiện tại + việc tiếp theo. Chi tiết kiến trúc xem `PROJECT_ARCHITECTURE.md`; lịch sử từng bước/test/bug xem `PROJECT_HISTORY.md`.
 >
-> **Cập nhật gần nhất: 2026-09-25.**
+> **Cập nhật gần nhất: 2026-10-16.**
 
 ---
 
@@ -61,6 +61,46 @@ Tuần 6 - Thứ 3      DONE  — Enemy Ranged
 COMPLETED: 27 / 50 task
 CURRENT: Tuần 6 - Thứ 4 — Damage System
 STATUS: Đang làm
+```
+
+## Bổ sung sau Tuần 4 - Thứ 6 — Minimap Update — PLAY TEST PASS
+
+Đã hoàn thành và người dùng đã Play Test xác nhận phần update Minimap.
+
+Phạm vi đã hoàn thành:
+
+```text
+Room layout position của Edgar
+        ↓
+Chuẩn hóa thành các mức tọa độ X/Y cách đều trên Minimap
+        ↓
+CreateRoomIcon() đặt icon theo roomIconSpacing
+        ↓
+CreateRoomConnections() chạy sau khi toàn bộ icon đã có vị trí
+        ↓
+SetCurrentRoom()
+        ↓
+dịch RoomIconContainer + ConnectionContainer
+        ↓
+Current Room nằm tại tâm MinimapRoot
+```
+
+Đã chốt:
+- Khoảng cách Room icon trên Minimap không còn phụ thuộc trực tiếp vào khoảng trống/kích thước layout Edgar.
+- `roomIconSpacing` là biến Inspector để tuning khoảng cách cố định theo cả trục X và Y; giá trị Play Test hiện tại là `70`.
+- Connection được tạo sau Room icon và dùng cùng tọa độ Minimap đã chuẩn hóa.
+- `RectMask2D` trên `MinimapRoot` cắt phần icon/connection nằm ngoài vùng UI.
+- Recenter chỉ dịch hai UI container, không build lại RoomContext hoặc graph Edgar.
+
+Regression đã xác nhận:
+
+```text
+✓ Room lớn/nhỏ vẫn có khoảng cách Minimap theo spacing cố định.
+✓ Connection nối đúng vị trí sau khi icon được tạo.
+✓ Current Room luôn nằm ở tâm MinimapRoot khi Player đổi Room.
+✓ Phần Minimap vượt ngoài MinimapRoot bị ẩn bởi RectMask2D.
+✓ Regenerate nhiều seed không giữ icon/connection/reference cũ.
+✓ Console không có lỗi đỏ trong test cuối.
 ```
 
 ## Tuần 6 - Thứ 2 — Enemy Architecture — DONE
@@ -179,6 +219,43 @@ Regression đã xác nhận:
 - Enemy reuse có thể Attack lại sạch.
 - Projectile reuse không giữ state cũ.
 - Console không có lỗi đỏ trong test cuối task.
+
+## Bổ sung sau Tuần 6 — Enemy Pool hỗ trợ nhiều loại Enemy — DONE
+
+Đã Play Test sau khi mở rộng và dọn cleanup legacy.
+
+```text
+EnemySpawnPoint.EnemyPrefab
+        ↓
+RoomController.GetEnemy(requestedEnemyPrefab, ...)
+        ↓
+EnemyPool tìm pool con theo Enemy prefab
+        ↓
+EnemyHealth / EnemyAI reset state
+        ↓
+Enemy runtime được parent vào Room
+```
+
+Đã chốt:
+- Một `EnemyPool` Scene object quản lý nhiều `ObjectPool<EnemyHealth>` nội bộ.
+- Mỗi `EnemyPoolEntry` tương ứng với một Enemy prefab và capacity riêng.
+- Mỗi `EnemySpawnPoint` có thể chọn một Enemy prefab khác nhau.
+- `EnemyPool` tracking pool sở hữu từng Enemy đang rented để release đúng pool con.
+- `EnemyPool` đã xoá field default Enemy và overload `GetEnemy(...)` cũ sau khi flow mới được Play Test.
+- `EnemyData` tiếp tục là stat/config được Enemy prefab tham chiếu; không dùng làm lựa chọn spawn tại SpawnPoint.
+
+Regression đã xác nhận:
+
+```text
+✓ Một Room spawn được nhiều loại Enemy từ các SpawnPoint khác nhau.
+✓ Enemy spawn đúng vị trí và đúng prefab đã cấu hình.
+✓ Enemy chết được release về đúng pool con.
+✓ Enemy reuse reset state đúng.
+✓ ReleaseAllRentedEnemies() vẫn cleanup được nhiều loại Enemy khi đổi Floor.
+✓ Console không có lỗi đỏ sau cleanup legacy.
+```
+
+Đây là bổ sung kiến trúc cho Object Pooling, không tạo task roadmap mới và không làm tăng tổng số task DONE.
 
 ---
 

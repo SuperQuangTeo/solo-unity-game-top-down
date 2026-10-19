@@ -2514,6 +2514,10 @@ Quy tắc:
 - [x] Floor 01 có 6 icon và 5 connection line.
 - [x] `ClearMinimap()` dọn icon/connection/reference cũ khi regenerate.
 - [x] Bug icon dồn tâm do thiếu gán `anchoredPosition = minimapPosition` đã xác định và sửa.
+- [x] Update Minimap: chuẩn hóa các mức tọa độ X/Y để Room icon cách đều bằng `roomIconSpacing`, không phụ thuộc trực tiếp khoảng trống layout Edgar.
+- [x] Connection được tạo sau Room icon và dùng cùng tọa độ Minimap đã chuẩn hóa.
+- [x] Current Room recenter bằng cách dịch đồng thời `RoomIconContainer` và `ConnectionContainer`.
+- [x] `RectMask2D` trên `MinimapRoot` ẩn phần icon/connection vượt khỏi vùng UI.
 
 
 
@@ -2818,4 +2822,95 @@ Player về Start Room mới qua PlayerSpawnPoint
 - Loading/fade transition.
 
 Prototype này không đánh dấu task `Boss Flow` Tuần 7 là DONE.
+
+---
+## 2026-10-15 — EnemyPool hỗ trợ nhiều loại Enemy — PLAY TEST PASS
+
+### Mục tiêu
+
+Cho phép một `EnemyPool` quản lý nhiều loại Enemy prefab và cho phép từng `EnemySpawnPoint` chọn Enemy riêng, nhưng vẫn giữ Object Pooling và Room lifecycle hiện tại.
+
+### Quyết định kiến trúc
+
+Không dùng `EnemyData` làm lựa chọn spawn. `EnemyData` tiếp tục là stat/config được Enemy prefab tham chiếu.
+
+```text
+EnemySpawnPoint.EnemyPrefab
+        ↓
+RoomController
+        ↓
+EnemyPool.GetEnemy(requestedEnemyPrefab, ...)
+        ↓
+EnemyPoolEntry tương ứng
+        ↓
+ObjectPool<EnemyHealth> của prefab đó
+```
+
+`EnemyPool` giữ một danh sách `EnemyPoolEntry`; mỗi Entry có Enemy prefab, default capacity và max size. Runtime dùng dictionary để tìm pool theo prefab và nhớ pool sở hữu từng Enemy đang rented.
+
+### Thay đổi chính
+
+- `EnemySpawnPoint` có `EnemyPrefab` để mỗi SpawnPoint có thể chọn loại Enemy khác nhau.
+- `EnemyPool` quản lý nhiều `ObjectPool<EnemyHealth>` nội bộ.
+- `RoomController` truyền prefab từ SpawnPoint vào API Get mới.
+- `ReleaseEnemy()` release đúng pool con của Enemy đã spawn.
+- `ReleaseAllRentedEnemies()` tiếp tục cleanup được tất cả loại Enemy khi chuyển Floor.
+- Thêm validation cho Pool Entry thiếu prefab, duplicate prefab và capacity không hợp lệ.
+- Xoá legacy default Enemy field và overload `GetEnemy(Vector3, Transform)` sau khi flow mới hoạt động.
+
+### Regression đã Play Test
+
+```text
+✓ Nhiều loại Enemy spawn đúng từ các SpawnPoint khác nhau.
+✓ Enemy đúng vị trí và đúng prefab đã cấu hình.
+✓ Death → release đúng pool con.
+✓ Reuse reset HP/AI/state đúng.
+✓ Floor transition release được nhiều loại Enemy.
+✓ Cleanup legacy không tạo lỗi Console.
+```
+
+Đây là bổ sung cho task Object Pooling đã DONE, không tạo task roadmap mới và không thay đổi phạm vi Damage System đang làm.
+
+---
+## 2026-10-16 — Minimap Update: Fixed Spacing, Recenter và UI Clipping — PLAY TEST PASS
+
+### Mục tiêu
+
+Cải thiện Minimap hiện tại mà không thay đổi Edgar adapter, `RoomContext` hoặc Room transition contract:
+
+```text
+Room icon cách đều theo hệ tọa độ Minimap
+Connection dùng vị trí icon sau khi build
+Current Room luôn ở tâm MinimapRoot
+Phần vượt khỏi MinimapRoot bị ẩn
+```
+
+### Thay đổi chính
+
+- Chuẩn hóa các mức tọa độ X/Y duy nhất của `RoomContext.LayoutPosition` thành các bậc Minimap liên tiếp.
+- Giá trị tuning đã Play Test: `roomIconSpacing = 70`.
+- Dùng `roomIconSpacing` làm khoảng cách cố định giữa các bậc theo cả trục ngang và dọc.
+- `CreateRoomConnections()` chạy sau `CreateRoomIcon()` để connection dùng đúng vị trí icon đã chuẩn hóa.
+- `SetCurrentRoom()` dịch đồng thời `RoomIconContainer` và `ConnectionContainer` để Current Room nằm tại tâm `MinimapRoot`.
+- Thêm `RectMask2D` vào `MinimapRoot` để cắt phần UI nằm ngoài vùng Minimap.
+
+### Ranh giới giữ nguyên
+
+- Edgar vẫn chỉ cung cấp layout/graph.
+- `RoomContext` vẫn là dữ liệu trung tâm cho Minimap.
+- `RoomTransitionController` vẫn là nơi báo Current Room.
+- Không tạo lại graph hoặc RoomContext khi Player đổi Room.
+- Không tạo task roadmap mới; đây là update bổ sung cho Minimap đã DONE.
+
+### Regression đã Play Test
+
+```text
+✓ Room lớn/nhỏ vẫn có khoảng cách Minimap theo spacing cố định.
+✓ Khoảng cách ngang và dọc được tuning bằng roomIconSpacing.
+✓ Connection tạo sau icon và nối đúng layout mới.
+✓ Current Room luôn ở tâm MinimapRoot khi đổi Room.
+✓ Icon/connection vượt biên MinimapRoot bị RectMask2D ẩn.
+✓ Regenerate nhiều seed không giữ object/reference Minimap cũ.
+✓ Console không có lỗi đỏ trong test cuối.
+```
 

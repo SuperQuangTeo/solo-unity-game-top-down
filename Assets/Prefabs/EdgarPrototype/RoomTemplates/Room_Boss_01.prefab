@@ -516,6 +516,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: fbfb504cdf388054eaf7acb7796d63fe, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::EnemySpawnPoint
+  enemyPrefab: {fileID: 6314659734279028819, guid: 68e6ac68838b0d940a51bfd535b87e33, type: 3}
 --- !u!1 &2328019633725496005
 GameObject:
   m_ObjectHideFlags: 0

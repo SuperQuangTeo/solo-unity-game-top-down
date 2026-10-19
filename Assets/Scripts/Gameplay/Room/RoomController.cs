@@ -303,7 +303,25 @@ public class RoomController : MonoBehaviour
                 continue;
             }
 
-            EnemyHealth spawnedEnemy = enemyPool.GetEnemy(enemySpawnPoint.transform.position, enemyContainer);
+            EnemyHealth requestedEnemyPrefab = enemySpawnPoint.EnemyPrefab;
+
+            if (requestedEnemyPrefab == null)
+            {
+                Debug.LogError(
+                    $"EnemySpawnPoint '{enemySpawnPoint.name}' in Room " +
+                    $"'{gameObject.name}' has no Enemy Prefab assigned.",
+                    enemySpawnPoint
+                );
+
+                continue;
+            }
+
+            EnemyHealth spawnedEnemy = enemyPool.GetEnemy(requestedEnemyPrefab, enemySpawnPoint.transform.position, enemyContainer);
+
+            if (spawnedEnemy == null)
+            {
+                continue;
+            }
 
             ConfigureSpawnedEnemy(spawnedEnemy);
 

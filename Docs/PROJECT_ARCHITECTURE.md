@@ -809,7 +809,7 @@ Phải reset khi phù hợp:
 ```text
 RoomController.PrepareRuntimeEnemies()
         ↓
-EnemyPool.GetEnemy(spawnPosition, enemyContainer)
+EnemyPool.GetEnemy(enemyPrefab, spawnPosition, enemyContainer)
         ↓
 EnemyHealth.ResetForReuse()
 EnemyAI.ResetForReuse()
@@ -858,7 +858,42 @@ parent trở lại EnemyPool
 - `DOKill()` telegraph + trả scale gốc;
 - reset Rigidbody2D velocity/angular velocity.
 
-Combat Room cũ có Enemy đặt sẵn vẫn được giữ tương thích; chỉ Enemy runtime lấy từ `EnemyPool` mới được trả về pool.
+### Enemy Pool nhiều loại prefab
+
+Một `EnemyPool` trong Scene là facade quản lý nhiều pool con:
+
+```text
+EnemyPool
+├── EnemyPoolEntry: MeleeEnemy prefab → ObjectPool<EnemyHealth>
+├── EnemyPoolEntry: RangedEnemy prefab → ObjectPool<EnemyHealth>
+└── EnemyPoolEntry: Enemy variant prefab → ObjectPool<EnemyHealth>
+```
+
+`EnemySpawnPoint` giữ `EnemyPrefab`, không giữ `EnemyData`:
+
+```text
+EnemySpawnPoint
+        ↓ chọn Enemy prefab
+RoomController
+        ↓ truyền prefab cụ thể
+EnemyPool.GetEnemy(enemyPrefab, position, container)
+        ↓
+pool con tương ứng
+```
+
+`EnemyData` tiếp tục chỉ giữ stat/config như HP, Move Speed, Attack Damage và Attack Cooldown; Enemy prefab tham chiếu `EnemyData` của nó. SpawnPoint không tạo hoặc sở hữu ScriptableObject stat.
+
+`EnemyPool` dùng mapping runtime để nhớ pool đã tạo từng Enemy. Khi release, Enemy quay về đúng pool con, không bị trộn giữa các loại prefab. `ReleaseAllRentedEnemies()` duyệt toàn bộ Enemy đang rented nên vẫn dùng được khi chuyển Floor.
+
+API runtime hiện tại:
+
+```text
+GetEnemy(EnemyHealth requestedEnemyPrefab, Vector3, Transform)
+ReleaseEnemy(EnemyHealth)
+ReleaseAllRentedEnemies()
+```
+
+API legacy `GetEnemy(Vector3, Transform)` và field default Enemy đã được loại bỏ sau khi flow nhiều prefab Play Test PASS.
 
 ## Drop Pool
 
@@ -2078,7 +2113,7 @@ PrepareRuntimeEnemies()
         ↓
 EnemySpawnPoints[]
         ↓
-Instantiate Enemy tại từng SpawnPoint
+EnemyPool.GetEnemy(EnemySpawnPoint.EnemyPrefab, ...)
         ↓
 parent vào child Enemies
         ↓
@@ -2195,11 +2230,11 @@ RoomController hiện dùng thêm ý nghĩa runtime:
 roomContext
 → biết RoomType + EnemySpawnPoints
 
-enemyPrefab
-→ prefab Enemy chung dùng cho SpawnPoint ở giai đoạn hiện tại
+EnemySpawnPoint.EnemyPrefab
+→ prefab Enemy cụ thể mà từng SpawnPoint yêu cầu
 
 hasSpawnedRuntimeEnemies
-→ ngăn một Room Instantiate Enemy lần thứ hai
+→ ngăn một Room spawn Enemy lần thứ hai
 ```
 
 Không tạo Enemy spawning Manager riêng ở giai đoạn này.
@@ -2482,7 +2517,7 @@ RoomController.SetEnemyPool()
         ↓
 PrepareRuntimeEnemies()
         ↓
-EnemyPool.GetEnemy()
+EnemyPool.GetEnemy(EnemySpawnPoint.EnemyPrefab, ...)
 ```
 
 Death event được đổi từ `Action` sang `Action<EnemyHealth>` để listener nhận đúng Enemy vừa chết.
@@ -3185,6 +3220,82 @@ EdgarDungeonPostProcessing
 - Chưa có Branch Point, `SelectedRoute`, Surface Route hoặc Deep Earth Route.
 - Chưa có save/load, End Run hoặc loading/fade transition.
 - Không đánh dấu task `Boss Flow` Tuần 7 là DONE từ prototype này.
+
+# 20B. Minimap Update — Fixed Spacing, Recenter và UI Clipping
+
+Update này bổ sung trên kiến trúc Minimap đã có, không thay đổi ranh giới Edgar → `RoomContext` → `MinimapGenerator`.
+
+## Chuẩn hóa khoảng cách Room icon
+
+`RoomContext.LayoutPosition` vẫn là dữ liệu layout từ Edgar, nhưng không còn được dùng trực tiếp để tạo khoảng cách pixel UI.
+
+```text
+LayoutPosition X/Y của tất cả Room
+        ↓
+Lấy các mức X/Y duy nhất
+        ↓
+Sắp xếp và gán index liên tiếp
+        ↓
+index tương đối × roomIconSpacing
+        ↓
+RectTransform.anchoredPosition
+```
+
+Ví dụ:
+
+```text
+Edgar X:       0, 5, 12
+Minimap index: 0, 1, 2
+```
+
+Nếu `roomIconSpacing = 5`:
+
+```text
+Khoảng cách giữa các mức X liền kề = 5
+Khoảng cách giữa các mức Y liền kề = 5
+```
+
+`roomIconSpacing` là tuning value trên `MinimapGenerator`; giá trị Play Test hiện tại là `70`. Connection được tính sau khi icon đã được tạo và dùng cùng `CalculateMinimapPosition()`, nên không bị lệch khỏi icon.
+
+## Recenter theo Current Room
+
+Khi Player vào Room mới:
+
+```text
+RoomTransitionController.EnterRoom(newRoom)
+        ↓
+MinimapGenerator.SetCurrentRoom(newRoom)
+        ↓
+CalculateMinimapPosition(newRoom)
+        ↓
+offset = -currentRoomPosition
+        ↓
+dịch RoomIconContainer + ConnectionContainer
+```
+
+Minimap không build lại icon, connection hoặc `RoomContext`. Hai container phải cùng parent và dùng hệ anchor/pivot trung tâm của `MinimapRoot`.
+
+## UI clipping
+
+```text
+MinimapRoot
+├── RectMask2D
+├── ConnectionContainer
+└── RoomIconContainer
+```
+
+`RectMask2D` cắt các UI Graphic nằm ngoài RectTransform của `MinimapRoot`. Room icon và connection prefab giữ `Maskable` để nhận clipping.
+
+## Regression đã Play Test
+
+```text
+✓ Room lớn/nhỏ không làm thay đổi spacing Minimap đã chốt.
+✓ Spacing ngang/dọc được điều chỉnh bằng roomIconSpacing.
+✓ Connection tạo sau icon và dùng vị trí chuẩn hóa.
+✓ Current Room nằm tại tâm MinimapRoot khi đổi Room.
+✓ UI vượt khỏi MinimapRoot bị cắt.
+✓ Regenerate Floor/seed không giữ icon hoặc connection cũ.
+```
 
 # 21. Những thứ cố ý CHƯA làm
 

@@ -2,15 +2,8 @@ using UnityEngine;
 
 public class EnemySpawnPoint : MonoBehaviour
 {
-    // Start is called once before the first execution of Update after the MonoBehaviour is created
-    void Start()
-    {
-        
-    }
+    [Header("Enemy Spawn Configuration")]
+    [SerializeField] private EnemyHealth enemyPrefab;
 
-    // Update is called once per frame
-    void Update()
-    {
-        
-    }
+    public EnemyHealth EnemyPrefab => enemyPrefab;
 }

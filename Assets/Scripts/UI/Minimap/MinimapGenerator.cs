@@ -10,11 +10,15 @@ public class MinimapGenerator : MonoBehaviour
     [SerializeField] private RectTransform connectionPrefab;
 
     [Header("Minimap Layout")]
-    [SerializeField, Min(0.1f)] private float minimapScale = 2f;
+    [SerializeField, Min(0.1f)] private float roomIconSpacing = 70f;
 
     private readonly List<MinimapRoomIcon> roomIcons = new List<MinimapRoomIcon>();
 
+    private readonly Dictionary<int, int> minimapXCoordinates = new Dictionary<int, int>();
+    private readonly Dictionary<int, int> minimapYCoordinates = new Dictionary<int, int>();
+
     private RoomContext currentRoom;
+    private Vector2Int minimapOrigin;
 
     public void BuildMinimap(RoomContext[] roomContexts)
     {
@@ -31,7 +35,9 @@ public class MinimapGenerator : MonoBehaviour
             return;
         }
 
-        Vector2Int minimapOrigin = startRoom.LayoutPosition;
+        minimapOrigin = startRoom.LayoutPosition;
+
+        BuildFixedCoordinateMaps(roomContexts);
 
         foreach (RoomContext roomContext in roomContexts)
         {
@@ -107,7 +113,7 @@ public class MinimapGenerator : MonoBehaviour
 
         Vector2 minimapPosition = CalculateMinimapPosition(roomContext, minimapOrigin);
 
-        createdRoomIconRectTransform.anchoredPosition =minimapPosition;
+        createdRoomIconRectTransform.anchoredPosition = minimapPosition;
 
         createdRoomIcon.name = $"RoomIcon_{roomContext.RoomId}_{roomContext.RoomType}";
     }
@@ -170,8 +176,53 @@ public class MinimapGenerator : MonoBehaviour
 
     private Vector2 CalculateMinimapPosition(RoomContext roomContext, Vector2Int minimapOrigin)
     {
-        Vector2Int relativeLayoutPosition = roomContext.LayoutPosition - minimapOrigin;
-        return new Vector2(relativeLayoutPosition.x * minimapScale, relativeLayoutPosition.y * minimapScale);
+        int roomX = minimapXCoordinates[roomContext.LayoutPosition.x];
+        int roomY = minimapYCoordinates[roomContext.LayoutPosition.y];
+
+        int originX = minimapXCoordinates[minimapOrigin.x];
+        int originY = minimapYCoordinates[minimapOrigin.y];
+
+        int relativeX = roomX - originX;
+        int relativeY = roomY - originY;
+
+        return new Vector2(relativeX * roomIconSpacing, relativeY * roomIconSpacing);
+    }
+
+    private void BuildFixedCoordinateMaps(RoomContext[] roomContexts)
+    {
+        minimapXCoordinates.Clear();
+        minimapYCoordinates.Clear();
+
+        HashSet<int> uniqueXCoordinates = new HashSet<int>();
+        HashSet<int> uniqueYCoordinates = new HashSet<int>();
+
+        foreach (RoomContext roomContext in roomContexts)
+        {
+            if (roomContext == null)
+            {
+                continue;
+            }
+
+            uniqueXCoordinates.Add(roomContext.LayoutPosition.x);
+            uniqueYCoordinates.Add(roomContext.LayoutPosition.y);
+        }
+
+        List<int> sortedXCoordinates = new List<int>(uniqueXCoordinates);
+
+        List<int> sortedYCoordinates = new List<int>(uniqueYCoordinates);
+
+        sortedXCoordinates.Sort();
+        sortedYCoordinates.Sort();
+
+        for (int index = 0; index < sortedXCoordinates.Count; index++)
+        {
+            minimapXCoordinates.Add(sortedXCoordinates[index], index);
+        }
+
+        for (int index = 0; index < sortedYCoordinates.Count; index++)
+        {
+            minimapYCoordinates.Add(sortedYCoordinates[index], index);
+        }
     }
 
     private void ClearMinimap()
@@ -192,6 +243,8 @@ public class MinimapGenerator : MonoBehaviour
             );
         }
         roomIcons.Clear();
+        minimapXCoordinates.Clear();
+        minimapYCoordinates.Clear();
         currentRoom = null;
     }
 
@@ -206,7 +259,24 @@ public class MinimapGenerator : MonoBehaviour
 
         currentRoom.MarkAsVisited();
 
+        RecenterMinimap();
+
         RefreshRoomIcons();
+    }
+
+    private void RecenterMinimap()
+    {
+        if (currentRoom == null)
+        {
+            return;
+        }
+
+        Vector2 currentRoomPosition = CalculateMinimapPosition(currentRoom, minimapOrigin);
+
+        Vector2 minimapOffset = -currentRoomPosition;
+
+        roomIconContainer.anchoredPosition = minimapOffset;
+        connectionContainer.anchoredPosition = minimapOffset;
     }
 
     private void RefreshRoomIcons()
