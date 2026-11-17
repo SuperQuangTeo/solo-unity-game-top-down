@@ -1,5 +1,5 @@
 using Edgar.Unity;
-using System.Collections.Generic;
+using System;
 using UnityEngine;
 
 public class EdgarDungeonGenerator : MonoBehaviour
@@ -13,6 +13,9 @@ public class EdgarDungeonGenerator : MonoBehaviour
     private DungeonGeneratorGrid2D dungeonGenerator;
 
     public FloorEdgarConfig CurrentFloorEdgarConfig => floorEdgarConfig;
+    public int CurrentGenerationSeed { get; private set; }
+
+    private readonly DynamicLevelGraphBuilder dynamicLevelGraphBuilder = new DynamicLevelGraphBuilder();
 
     private void Start()
     {
@@ -31,7 +34,10 @@ public class EdgarDungeonGenerator : MonoBehaviour
             return false;
         }
 
-        ApplyFloorConfiguration();
+        if (!TryApplyFloorConfiguration())
+        {
+            return false;
+        }
 
         dungeonGenerator.Generate();
 
@@ -82,11 +88,19 @@ public class EdgarDungeonGenerator : MonoBehaviour
 
             return false;
         }
-        if (floorEdgarConfig.LevelGraphs == null ||
-           floorEdgarConfig.LevelGraphs.Count == 0)
+        if (floorEdgarConfig.BaseLevelGraph == null)
         {
             Debug.LogError(
-                "FloorEdgarConfig does not contain any Level Graph.",
+                "FloorEdgarConfig chưa được gán Base Level Graph.",
+                this
+            );
+
+            return false;
+        }
+        if (floorEdgarConfig.DynamicLevelGraphConfig == null)
+        {
+            Debug.LogError(
+                "FloorEdgarConfig chưa được gán Dynamic Level Graph Config.",
                 this
             );
 
@@ -95,31 +109,55 @@ public class EdgarDungeonGenerator : MonoBehaviour
         return true;
     }
 
-    private void ApplyFloorConfiguration()
+    private bool TryApplyFloorConfiguration()
     {
         FloorData floorData = floorEdgarConfig.FloorData;
 
-        LevelGraph selectedLevelGraph = GetRandomLevelGraph();
+        if (floorData == null)
+        {
+            Debug.LogError("FloorEdgarConfig chưa được gán FloorData.", this);
+            return false;
+        }
 
-        dungeonGenerator.FixedLevelGraphConfig.LevelGraph = selectedLevelGraph;
-        dungeonGenerator.UseRandomSeed = floorData.UseRandomSeed;
-        dungeonGenerator.RandomGeneratorSeed = floorData.FixedSeed;
-    }
+        CurrentGenerationSeed = GetGenerationSeed(floorData);
 
-    private LevelGraph GetRandomLevelGraph()
-    {
-        List<LevelGraph> levelGraphs = floorEdgarConfig.LevelGraphs;
+        try
+        {
+            LevelGraph runtimeLevelGraph = dynamicLevelGraphBuilder.Build(
+                floorEdgarConfig.BaseLevelGraph,
+                floorEdgarConfig.DynamicLevelGraphConfig,
+                CurrentGenerationSeed
+            );
 
-        int randomIndex = Random.Range(0, levelGraphs.Count);
+            dungeonGenerator.FixedLevelGraphConfig.LevelGraph = runtimeLevelGraph;
+        }
+        catch (Exception exception)
+        {
+            Debug.LogError(
+                $"Không thể build Dynamic Level Graph: {exception.Message}",
+                this
+            );
 
-        LevelGraph selectedLevelGraph = levelGraphs[randomIndex];
+            return false;
+        }
+
+        // Builder và Edgar dùng chung seed để cùng một seed tạo lại cùng topology/layout.
+        dungeonGenerator.UseRandomSeed = false;
+        dungeonGenerator.RandomGeneratorSeed = CurrentGenerationSeed;
 
         Debug.Log(
-            $"Selected Level Graph: {selectedLevelGraph.name}",
+            $"Dynamic Level Graph đã build với seed: {CurrentGenerationSeed}",
             this
         );
 
-        return selectedLevelGraph;
+        return true;
+    }
+
+    private int GetGenerationSeed(FloorData floorData)
+    {
+        return floorData.UseRandomSeed
+            ? Guid.NewGuid().GetHashCode()
+            : floorData.FixedSeed;
     }
 
     [ContextMenu("Test Generate Dungeon")]

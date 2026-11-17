@@ -1,5 +1,4 @@
 using Edgar.Unity;
-using System.Collections.Generic;
 using UnityEngine;
 
 [CreateAssetMenu(fileName = "NewFloorEdgarConfig",menuName = "Dungeon/Floor Edgar Config")]
@@ -8,39 +7,23 @@ public class FloorEdgarConfig : ScriptableObject
     [Header("Floor Data")]
     [SerializeField] private FloorData floorData;
 
-    [Header("Edgar Configuration")]
-    [SerializeField] private List<LevelGraph> levelGraphs;
+    [Header("Edgar Dynamic Graph")]
+    [SerializeField] private LevelGraph baseLevelGraph;
+    [SerializeField] private DynamicLevelGraphConfig dynamicLevelGraphConfig;
 
     public FloorData FloorData => floorData;
+    public LevelGraph BaseLevelGraph => baseLevelGraph;
+    public DynamicLevelGraphConfig DynamicLevelGraphConfig => dynamicLevelGraphConfig;
 
-    public List<LevelGraph> LevelGraphs => levelGraphs;
     private void OnValidate()
     {
-        if (floorData == null || levelGraphs == null || levelGraphs.Count == 0)
+        if (floorData == null)
         {
             return;
         }
 
-        ValidateLevelGraphs();
         ValidateRequiredRoomTypes();
     }
-
-    private void ValidateLevelGraphs()
-    {
-        for (int i = 0; i < levelGraphs.Count; i++)
-        {
-            LevelGraph levelGraph = levelGraphs[i];
-
-            if (levelGraph == null)
-            {
-                Debug.LogWarning(
-                    $"Floor '{floorData.name}' has an empty Level Graph at index {i}.",
-                    this
-                );
-            }
-        }
-    }
-
 
     private void ValidateRequiredRoomTypes()
     {
